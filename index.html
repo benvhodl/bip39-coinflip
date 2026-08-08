@@ -78,6 +78,8 @@
     margin-top: 4px;
   }
   .choice-btn.active { border-color: var(--accent); background: #2a2440; }
+  .choice-check { display: none; color: var(--accent2); font-weight: 800; }
+  .choice-btn.active .choice-check { display: inline; }
 
   .mode-note {
     font-size: 0.8rem;
@@ -129,10 +131,15 @@
   .coin-stepper span { color: var(--muted); font-size: 0.78rem; min-width: 90px; }
 
   .vn-meta { text-align: center; color: var(--muted); font-size: 0.78rem; margin-top: 10px; }
+  .ambiguous-note { text-align: center; color: var(--muted); font-size: 0.76rem; margin-top: 12px; line-height: 1.5; }
 
   .flip-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   button { font: inherit; cursor: pointer; border: none; border-radius: 12px; padding: 18px 12px; font-weight: 700; font-size: 1.1rem; transition: transform 0.05s ease; }
   button:active { transform: scale(0.97); }
+  button:focus-visible, .choice-btn:focus-visible {
+    outline: 3px solid var(--accent2);
+    outline-offset: 2px;
+  }
   .btn-heads { background: var(--accent); color: #fff; }
   .btn-tails { background: #3a3f4b; color: var(--text); }
   .btn-heads .sub, .btn-tails .sub { display: block; font-weight: 400; font-size: 0.75rem; opacity: 0.8; margin-top: 2px; }
@@ -143,15 +150,17 @@
   .result { text-align: center; }
   .result .word { font-size: 2.4rem; font-weight: 800; color: var(--accent2); margin: 8px 0 4px; word-break: break-word; }
   .result .meta { color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
-  .result .meta code { background: #2a2e38; padding: 1px 6px; border-radius: 4px; }
   .result .meta.warn { color: #e0b45c; margin-top: 10px; }
   .pick-another { width: 100%; margin-top: 16px; background: var(--accent2); color: #06251a; padding: 16px; font-size: 1rem; }
 
   .btn-primary { width: 100%; background: var(--accent); color: #fff; padding: 16px; font-size: 1rem; }
+  .btn-secondary { width: 100%; background: #2a2e38; color: var(--muted); padding: 12px; font-size: 0.9rem; margin-top: 6px; }
   .begin-btn { margin-top: 4px; }
 
   .finished-title { text-align: center; font-size: 1.3rem; font-weight: 800; color: var(--accent2); margin-bottom: 12px; }
   .finished-body { color: var(--text); font-size: 0.92rem; line-height: 1.7; white-space: pre-line; margin-bottom: 18px; }
+  .finished-close-hint { text-align: center; color: var(--text); font-size: 0.88rem; margin-bottom: 14px; font-weight: 600; }
+  .finished-testing-note { text-align: center; color: var(--muted); font-size: 0.75rem; margin-top: 8px; }
 
   details { color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
   details summary { cursor: pointer; font-weight: 600; color: var(--text); margin-bottom: 8px; }
@@ -182,41 +191,42 @@
   <!-- ==================== SETUP SCREEN ==================== -->
   <div class="panel" id="screen-setup">
     <div class="security-banner">
-      <strong>This computer will never hold your complete BIP39 seed.</strong>
-      It stops one word short. You get the final checksum word from a
-      trusted hardware device (or an explicitly trusted offline tool)
-      separately, outside this page.
+      <strong>This application never constructs or stores the complete BIP39 mnemonic or complete entropy.</strong>
+      At most, it temporarily holds the current entropy word and the flip data used to derive it, until you
+      confirm you've written that word down. It stops one word short: a 12-word seed gets entropy words 1&ndash;11,
+      a 24-word seed gets words 1&ndash;23. You generate the final word separately, using trusted hardware (or
+      another explicitly trusted offline method) &mdash; see README.md for workflow details.
       <div class="pipeline">physical coin
      |
 this computer  --&gt;  entropy words only  --&gt;  you write them down
      |
-computer forgets them
+computer clears its reference to each word once you confirm it
      |
-final checksum word generated elsewhere
+final word (remaining entropy + checksum) generated elsewhere
      |
-complete seed exists only outside this computer</div>
+complete mnemonic assembled only outside this computer</div>
     </div>
 
     <div class="field-group">
       <div class="field-label">Seed length</div>
       <div class="choice-row">
-        <button type="button" class="choice-btn active" id="opt-len-12" data-len="12">12-word BIP39 seed<span class="choice-sub">Generates 11 entropy words</span></button>
-        <button type="button" class="choice-btn" id="opt-len-24" data-len="24">24-word BIP39 seed<span class="choice-sub">Generates 23 entropy words</span></button>
+        <button type="button" class="choice-btn active" id="opt-len-12" data-len="12" aria-pressed="true"><span class="choice-check" aria-hidden="true">&check; </span>12-word BIP39 seed<span class="choice-sub">Generates 11 entropy words</span></button>
+        <button type="button" class="choice-btn" id="opt-len-24" data-len="24" aria-pressed="false"><span class="choice-check" aria-hidden="true">&check; </span>24-word BIP39 seed<span class="choice-sub">Generates 23 entropy words</span></button>
       </div>
     </div>
 
     <div class="field-group">
       <div class="field-label">Entropy mode</div>
       <div class="choice-row">
-        <button type="button" class="choice-btn active" id="opt-mode-standard" data-mode="standard">Standard<span class="choice-sub">1 flip = 1 bit</span></button>
-        <button type="button" class="choice-btn" id="opt-mode-vn" data-mode="vn">Bias-resistant<span class="choice-sub">Von Neumann, 2 flips = 1 bit</span></button>
+        <button type="button" class="choice-btn active" id="opt-mode-standard" data-mode="standard" aria-pressed="true"><span class="choice-check" aria-hidden="true">&check; </span>Standard<span class="choice-sub">Simpler / faster</span></button>
+        <button type="button" class="choice-btn" id="opt-mode-vn" data-mode="vn" aria-pressed="false"><span class="choice-check" aria-hidden="true">&check; </span>Bias-resistant<span class="choice-sub">Recommended for high-value wallets</span></button>
       </div>
     </div>
 
     <div class="mode-note" id="mode-note"></div>
 
     <div class="coin-box">
-      <div class="start-side-label">Coins in rotation (use a different physical coin each word)</div>
+      <div class="start-side-label">Coins in rotation &mdash; source diversity, not extra entropy. One coin is used for the entire current word; locked once you press Begin.</div>
       <div class="coin-value" id="setup-coin-value">3 coins</div>
       <div class="coin-stepper">
         <button type="button" id="coin-dec" aria-label="Fewer coins">&minus;</button>
@@ -230,20 +240,22 @@ complete seed exists only outside this computer</div>
     <details class="how-it-works">
       <summary>Security model &amp; honesty notes</summary>
       <ul>
-        <li><strong>This app deliberately stops one word short.</strong> For a 12-word seed it generates entropy words 1&ndash;11 and never touches word 12. For a 24-word seed it generates words 1&ndash;23 and never touches word 24. The omitted final word carries the BIP39 checksum; this page contains no checksum code at all &mdash; not because it's turned off, but because it was never written. There is no button, mode, or hidden feature anywhere in this file that computes a 12th or 24th word, reconstructs full entropy, derives a seed, or builds an xprv/xpub. The only cryptographic logic here is the deterministic mapping from 11 bits to one of the 2048 BIP39 words.</li>
-        <li>Get the final checksum word from a trusted hardware device that supports entering your own entropy, or from an explicitly trusted offline tool such as <a href="https://github.com/iancoleman/bip39" style="color:inherit">iancoleman's BIP39 tool</a> run from its downloaded standalone build on an air-gapped machine &mdash; never on a machine that has also seen these entropy words over the network.</li>
-        <li>Only one word's worth of state exists in memory at a time. There is no array anywhere in this page holding your generated words as a growing list, and the page never displays more than the single word you just finished. When you press "clear and continue," that word's bits, its computed index, and the word text are all discarded before the next word begins.</li>
+        <li><strong>This app deliberately stops one word short.</strong> For a 12-word seed it generates entropy words 1&ndash;11 (the first 121 of the 128 entropy bits) and never touches word 12, which contains the remaining 7 entropy bits plus a 4-bit checksum. For a 24-word seed it generates words 1&ndash;23 (the first 253 of the 256 entropy bits) and never touches word 24, which contains the remaining 3 entropy bits plus an 8-bit checksum. The final word is <em>not</em> simply a checksum of the earlier words &mdash; it's a mix of leftover entropy and checksum bits computed from the complete entropy. This page contains no checksum code at all &mdash; not because it's turned off, but because it was never written. There is no button, mode, or hidden feature anywhere in this file that computes a final word, reconstructs full entropy, derives a seed, or builds an extended key (xprv/xpub).</li>
+        <li>Generate the final word using trusted hardware that supports entering externally generated entropy. This page intentionally doesn't walk you through that step or link anywhere &mdash; it's meant to be run offline, and documentation belongs in README.md, not in an executable page that might be opened on a networked machine.</li>
+        <li>Only one word's worth of state exists in memory at a time: the current word's physical flip history (or raw bits, in Standard mode) until it's converted into a word, and then just that one word's text until you confirm you've written it down. There is no array anywhere in this page holding your generated words as a growing list, no complete-entropy buffer, and no checksum. When you press "clear and continue," the completed word's text and all of that word's underlying flip/bit state are discarded before the next word begins. To be precise about what that means: the application removes its references to the completed word and clears its DOM representation. JavaScript cannot guarantee physical RAM erasure &mdash; "cleared" here means dereferenced and eligible for garbage collection, not securely wiped.</li>
         <li>No localStorage, sessionStorage, cookies, IndexedDB, service workers, or network requests are used anywhere in this file. Nothing you do here is written to disk or sent anywhere. Reloading or closing the tab leaves nothing behind.</li>
-        <li><strong>Standard mode</strong> is one coin flip per bit. This page alternates which face you're asked to start each flip on (within a word) and which starting face begins each new word, and rotates through your coins &mdash; techniques intended to reduce known physical coin-toss biases, most notably the same-side bias documented in large empirical studies of real coin flips. This is honestly a mitigation, not a fix: it does not make a physical coin perfectly unbiased, and the resulting bits should not be assumed to be mathematically independent and identically distributed.</li>
+        <li><strong>Standard mode</strong> records the physical landing face directly, one flip per bit. This page alternates which face you're asked to start each flip on (within a word) and which starting face begins each new word, as a technique intended to reduce exposure to known starting-side/same-side effects across the overall sequence &mdash; it is not a randomness extractor and does not guarantee unbiased or independent bits. Each word uses an odd number of flips (11), so this alternation balances out across pairs of words, not within any single word. The displayed starting face is a procedure for the physical toss, not itself an entropy bit: the only entropy input in Standard mode is the physical landing face you report.</li>
         <li>Unlike some coin-flip tools, the starting-face pattern here is <strong>fully deterministic</strong> (alternating by word number and by flip number) rather than drawn from the browser's random number generator. This page uses no <code>crypto.getRandomValues</code>, <code>Math.random</code>, or any other software RNG anywhere, for anything. The tradeoff: an adversary who knows this algorithm could predict which face you're told to start on. That doesn't reduce the quality of your entropy below the baseline physical-coin bias described above, because the bit value recorded for any flip is always whatever the physical coin actually showed you, never a value derived from software &mdash; but it is a real, honestly-stated difference from a design that randomizes the starting face per word.</li>
-        <li><strong>Bias-resistant mode</strong> uses a von Neumann extractor: flip the coin twice per output bit; Heads&rarr;Tails yields 1, Tails&rarr;Heads yields 0, and Heads&rarr;Heads or Tails&rarr;Tails are discarded and re-flipped. This removes first-order heads/tails bias for any fixed-but-unknown coin bias, under the usual assumption that consecutive flips are independent trials. It does not guarantee perfect randomness against arbitrary correlations between flips (for example, if how you catch or re-place the coin depends systematically on the previous outcome). It does not claim to make the physical coin "perfectly random."</li>
-        <li>The "coins in rotation" setting cycles which physical coin you use, one per word, so a single coin's manufacturing defect or wear doesn't bias every word the same way.</li>
+        <li><strong>Bias-resistant mode</strong> uses a von Neumann extractor: flip the coin twice per output bit; Heads&rarr;Tails yields 1, Tails&rarr;Heads yields 0, and Heads&rarr;Heads or Tails&rarr;Tails are discarded and re-flipped. This removes fixed heads/tails bias when consecutive observations can be modeled as independent trials with a stable but unknown probability of heads. It does not protect against arbitrary dependence between consecutive flips (for example, if how you catch or re-place the coin depends systematically on the previous outcome). The only entropy input in this mode is the sequence of physical landing faces.</li>
+        <li>Rotating physical coins prevents every entropy word from depending on the same physical coin, providing some source diversity. It does not guarantee independence or compensate for systematic bias shared across coins, and using more coins is not the same as generating more entropy. One physical coin is used for the entire current word &mdash; don't switch coins mid-word.</li>
+        <li><strong>Ambiguous flips:</strong> if a coin lands on its edge, leaves the landing surface, is caught, is obscured, or you're not confident which face it landed on, don't guess. Press "Reset this word" and start that word's flips over. In Bias-resistant mode especially, an ambiguous flip must not be quietly treated as if it were a same-same discard &mdash; only a full word reset removes it cleanly from the record.</li>
+        <li><strong>Physical flipping procedure:</strong> place the coin on the requested starting face (Standard mode) or however is convenient (Bias-resistant mode), flip it cleanly, let it land on a soft, level surface, and don't catch it. Then record the actual landing face.</li>
       </ul>
     </details>
 
     <details class="diagnostics">
       <summary>Diagnostics &mdash; run self-tests</summary>
-      <p class="diag-desc">Runs deterministic checks against synthetic test vectors only (not your real flips) &mdash; word list integrity, bit&rarr;word mapping, and the von Neumann extractor logic.</p>
+      <p class="diag-desc">Runs deterministic checks against synthetic test vectors only (not your real flips): word-list self-consistency, an exhaustive 11-bit&rarr;word mapping check across all 2048 values, von Neumann extractor logic including exact single-flip undo, input validation, and internal state invariants. (The embedded word list was separately diffed against the canonical BIP39 English list, and the entropy&rarr;word mapping was cross-checked against official BIP39 test vectors, during development &mdash; this in-page suite re-checks internal consistency, not the canonical source, since this page makes no network requests.)</p>
       <button type="button" id="btn-run-tests">Run self-tests</button>
       <pre id="test-output">(not run yet)</pre>
     </details>
@@ -252,12 +264,12 @@ complete seed exists only outside this computer</div>
   <!-- ==================== FLIP SCREEN ==================== -->
   <div class="panel hidden" id="screen-flip">
     <div class="status-line" id="flip-seed-label"></div>
-    <div class="flip-count" id="flip-word-progress"></div>
+    <div class="flip-count" id="flip-word-progress" aria-live="polite"></div>
 
     <div id="flip-standard" class="hidden">
       <div class="status-line">Bit order: first flip = leftmost (most significant)</div>
       <div class="bits" id="std-bits-display"></div>
-      <div class="status-line" id="std-flip-count"></div>
+      <div class="status-line" id="std-flip-count" aria-live="polite"></div>
       <div class="coin-box">
         <div class="start-side-label">Use for this whole word</div>
         <div class="coin-value" id="std-coin-value"></div>
@@ -275,12 +287,13 @@ complete seed exists only outside this computer</div>
         <button type="button" id="std-btn-undo">Undo last flip</button>
         <button type="button" id="std-btn-reset">Reset this word</button>
       </div>
+      <div class="ambiguous-note">Edge, caught, off the surface, or unclear? Don't guess &mdash; press "Reset this word."</div>
     </div>
 
     <div id="flip-vn" class="hidden">
       <div class="status-line">Flip twice per bit: Heads&rarr;Tails = 1, Tails&rarr;Heads = 0, same-same = discard</div>
       <div class="bits" id="vn-bits-display"></div>
-      <div class="status-line" id="vn-status"></div>
+      <div class="status-line" id="vn-status" aria-live="polite"></div>
       <div class="coin-box">
         <div class="start-side-label">Use for this whole word</div>
         <div class="coin-value" id="vn-coin-value"></div>
@@ -298,23 +311,25 @@ complete seed exists only outside this computer</div>
         <button type="button" id="vn-btn-reset">Reset this word</button>
       </div>
       <div class="vn-meta" id="vn-meta"></div>
+      <div class="ambiguous-note">Edge, caught, off the surface, or unclear? Don't guess &mdash; press "Reset this word." An ambiguous flip must never be quietly treated as a same-same discard.</div>
     </div>
   </div>
 
   <!-- ==================== WORD COMPLETE SCREEN ==================== -->
   <div class="panel result hidden" id="screen-word-complete">
-    <div class="status-line">Binary: <code id="wc-binary" style="font-family:monospace"></code></div>
     <div class="word" id="wc-word"></div>
-    <div class="meta">Index into word list (0&ndash;2047): <code id="wc-index"></code></div>
-    <div class="meta warn">Write this word down now, on paper, away from any camera or networked device. It will be cleared from this page as soon as you continue.</div>
+    <div class="meta warn">Write this word down now, on paper, away from any camera or networked device.</div>
+    <div class="meta warn">This word will not be shown again by this application.</div>
     <button type="button" class="pick-another" id="btn-continue">I've written it down &mdash; clear and continue</button>
   </div>
 
   <!-- ==================== FINISHED SCREEN ==================== -->
   <div class="panel hidden" id="screen-finished">
-    <div class="finished-title">Entropy words complete.</div>
+    <div class="finished-title">Entropy generation complete.</div>
     <div class="finished-body" id="finished-body"></div>
-    <button type="button" class="btn-primary" id="btn-start-over">Start a new seed</button>
+    <div class="finished-close-hint">The safest final action now is to close this tab or browser.</div>
+    <button type="button" class="btn-secondary" id="btn-start-over">Start a new seed</button>
+    <div class="finished-testing-note">For testing only &mdash; close the page after real entropy generation.</div>
   </div>
 </div>
 
@@ -330,11 +345,20 @@ complete seed exists only outside this computer</div>
  *
  * No network requests, no localStorage/sessionStorage/cookies/IndexedDB,
  * no service worker, no clipboard writes, no console logging of entropy
- * or words.
+ * or words. (Verified by manual grep during development for: fetch(,
+ * XMLHttpRequest, WebSocket, sendBeacon, localStorage, sessionStorage,
+ * indexedDB, document.cookie, navigator.clipboard, serviceWorker,
+ * Math.random, crypto.getRandomValues, crypto.randomUUID, crypto.subtle --
+ * none are present in this file.)
  */
 
 // ---------------------------------------------------------------------
 // BIP39 English word list (verbatim, 2048 entries). Do not edit by hand.
+// Diffed against the canonical list at
+// https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt during
+// development; entropy->word mapping cross-checked against the official
+// Trezor BIP39 test vectors. Both checks are development-time only -- this
+// page makes no network requests at runtime to verify anything.
 // ---------------------------------------------------------------------
 const WORDS = ["abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse", "access", "accident", "account", "accuse", "achieve", "acid", "acoustic", "acquire", "across", "act", "action", "actor", "actress", "actual", "adapt", "add", "addict", "address", "adjust", "admit", "adult", "advance", "advice", "aerobic", "affair", "afford", "afraid", "again", "age", "agent", "agree", "ahead", "aim", "air", "airport", "aisle", "alarm", "album", "alcohol", "alert", "alien", "all", "alley", "allow", "almost", "alone", "alpha", "already", "also", "alter", "always", "amateur", "amazing", "among", "amount", "amused", "analyst", "anchor", "ancient", "anger", "angle", "angry", "animal", "ankle", "announce", "annual", "another", "answer", "antenna", "antique", "anxiety", "any", "apart", "apology", "appear", "apple", "approve", "april", "arch", "arctic", "area", "arena", "argue", "arm", "armed", "armor", "army", "around", "arrange", "arrest", "arrive", "arrow", "art", "artefact", "artist", "artwork", "ask", "aspect", "assault", "asset", "assist", "assume", "asthma", "athlete", "atom", "attack", "attend", "attitude", "attract", "auction", "audit", "august", "aunt", "author", "auto", "autumn", "average", "avocado", "avoid", "awake", "aware", "away", "awesome", "awful", "awkward", "axis", "baby", "bachelor", "bacon", "badge", "bag", "balance", "balcony", "ball", "bamboo", "banana", "banner", "bar", "barely", "bargain", "barrel", "base", "basic", "basket", "battle", "beach", "bean", "beauty", "because", "become", "beef", "before", "begin", "behave", "behind", "believe", "below", "belt", "bench", "benefit", "best", "betray", "better", "between", "beyond", "bicycle", "bid", "bike", "bind", "biology", "bird", "birth", "bitter", "black", "blade", "blame", "blanket", "blast", "bleak", "bless", "blind", "blood", "blossom", "blouse", "blue", "blur", "blush", "board", "boat", "body", "boil", "bomb", "bone", "bonus", "book", "boost", "border", "boring", "borrow", "boss", "bottom", "bounce", "box", "boy", "bracket", "brain", "brand", "brass", "brave", "bread", "breeze", "brick", "bridge", "brief", "bright", "bring", "brisk", "broccoli", "broken", "bronze", "broom", "brother", "brown", "brush", "bubble", "buddy", "budget", "buffalo", "build", "bulb", "bulk", "bullet", "bundle", "bunker", "burden", "burger", "burst", "bus", "business", "busy", "butter", "buyer", "buzz", "cabbage", "cabin", "cable", "cactus", "cage", "cake", "call", "calm", "camera", "camp", "can", "canal", "cancel", "candy", "cannon", "canoe", "canvas", "canyon", "capable", "capital", "captain", "car", "carbon", "card", "cargo", "carpet", "carry", "cart", "case", "cash", "casino", "castle", "casual", "cat", "catalog", "catch", "category", "cattle", "caught", "cause", "caution", "cave", "ceiling", "celery", "cement", "census", "century", "cereal", "certain", "chair", "chalk", "champion", "change", "chaos", "chapter", "charge", "chase", "chat", "cheap", "check", "cheese", "chef", "cherry", "chest", "chicken", "chief", "child", "chimney", "choice", "choose", "chronic", "chuckle", "chunk", "churn", "cigar", "cinnamon", "circle", "citizen", "city", "civil", "claim", "clap", "clarify", "claw", "clay", "clean", "clerk", "clever", "click", "client", "cliff", "climb", "clinic", "clip", "clock", "clog", "close", "cloth", "cloud", "clown", "club", "clump", "cluster", "clutch", "coach", "coast", "coconut", "code", "coffee", "coil", "coin", "collect", "color", "column", "combine", "come", "comfort", "comic", "common", "company", "concert", "conduct", "confirm", "congress", "connect", "consider", "control", "convince", "cook", "cool", "copper", "copy", "coral", "core", "corn", "correct", "cost", "cotton", "couch", "country", "couple", "course", "cousin", "cover", "coyote", "crack", "cradle", "craft", "cram", "crane", "crash", "crater", "crawl", "crazy", "cream", "credit", "creek", "crew", "cricket", "crime", "crisp", "critic", "crop", "cross", "crouch", "crowd", "crucial", "cruel", "cruise", "crumble", "crunch", "crush", "cry", "crystal", "cube", "culture", "cup", "cupboard", "curious", "current", "curtain", "curve", "cushion", "custom", "cute", "cycle", "dad", "damage", "damp", "dance", "danger", "daring", "dash", "daughter", "dawn", "day", "deal", "debate", "debris", "decade", "december", "decide", "decline", "decorate", "decrease", "deer", "defense", "define", "defy", "degree", "delay", "deliver", "demand", "demise", "denial", "dentist", "deny", "depart", "depend", "deposit", "depth", "deputy", "derive", "describe", "desert", "design", "desk", "despair", "destroy", "detail", "detect", "develop", "device", "devote", "diagram", "dial", "diamond", "diary", "dice", "diesel", "diet", "differ", "digital", "dignity", "dilemma", "dinner", "dinosaur", "direct", "dirt", "disagree", "discover", "disease", "dish", "dismiss", "disorder", "display", "distance", "divert", "divide", "divorce", "dizzy", "doctor", "document", "dog", "doll", "dolphin", "domain", "donate", "donkey", "donor", "door", "dose", "double", "dove", "draft", "dragon", "drama", "drastic", "draw", "dream", "dress", "drift", "drill", "drink", "drip", "drive", "drop", "drum", "dry", "duck", "dumb", "dune", "during", "dust", "dutch", "duty", "dwarf", "dynamic", "eager", "eagle", "early", "earn", "earth", "easily", "east", "easy", "echo", "ecology", "economy", "edge", "edit", "educate", "effort", "egg", "eight", "either", "elbow", "elder", "electric", "elegant", "element", "elephant", "elevator", "elite", "else", "embark", "embody", "embrace", "emerge", "emotion", "employ", "empower", "empty", "enable", "enact", "end", "endless", "endorse", "enemy", "energy", "enforce", "engage", "engine", "enhance", "enjoy", "enlist", "enough", "enrich", "enroll", "ensure", "enter", "entire", "entry", "envelope", "episode", "equal", "equip", "era", "erase", "erode", "erosion", "error", "erupt", "escape", "essay", "essence", "estate", "eternal", "ethics", "evidence", "evil", "evoke", "evolve", "exact", "example", "excess", "exchange", "excite", "exclude", "excuse", "execute", "exercise", "exhaust", "exhibit", "exile", "exist", "exit", "exotic", "expand", "expect", "expire", "explain", "expose", "express", "extend", "extra", "eye", "eyebrow", "fabric", "face", "faculty", "fade", "faint", "faith", "fall", "false", "fame", "family", "famous", "fan", "fancy", "fantasy", "farm", "fashion", "fat", "fatal", "father", "fatigue", "fault", "favorite", "feature", "february", "federal", "fee", "feed", "feel", "female", "fence", "festival", "fetch", "fever", "few", "fiber", "fiction", "field", "figure", "file", "film", "filter", "final", "find", "fine", "finger", "finish", "fire", "firm", "first", "fiscal", "fish", "fit", "fitness", "fix", "flag", "flame", "flash", "flat", "flavor", "flee", "flight", "flip", "float", "flock", "floor", "flower", "fluid", "flush", "fly", "foam", "focus", "fog", "foil", "fold", "follow", "food", "foot", "force", "forest", "forget", "fork", "fortune", "forum", "forward", "fossil", "foster", "found", "fox", "fragile", "frame", "frequent", "fresh", "friend", "fringe", "frog", "front", "frost", "frown", "frozen", "fruit", "fuel", "fun", "funny", "furnace", "fury", "future", "gadget", "gain", "galaxy", "gallery", "game", "gap", "garage", "garbage", "garden", "garlic", "garment", "gas", "gasp", "gate", "gather", "gauge", "gaze", "general", "genius", "genre", "gentle", "genuine", "gesture", "ghost", "giant", "gift", "giggle", "ginger", "giraffe", "girl", "give", "glad", "glance", "glare", "glass", "glide", "glimpse", "globe", "gloom", "glory", "glove", "glow", "glue", "goat", "goddess", "gold", "good", "goose", "gorilla", "gospel", "gossip", "govern", "gown", "grab", "grace", "grain", "grant", "grape", "grass", "gravity", "great", "green", "grid", "grief", "grit", "grocery", "group", "grow", "grunt", "guard", "guess", "guide", "guilt", "guitar", "gun", "gym", "habit", "hair", "half", "hammer", "hamster", "hand", "happy", "harbor", "hard", "harsh", "harvest", "hat", "have", "hawk", "hazard", "head", "health", "heart", "heavy", "hedgehog", "height", "hello", "helmet", "help", "hen", "hero", "hidden", "high", "hill", "hint", "hip", "hire", "history", "hobby", "hockey", "hold", "hole", "holiday", "hollow", "home", "honey", "hood", "hope", "horn", "horror", "horse", "hospital", "host", "hotel", "hour", "hover", "hub", "huge", "human", "humble", "humor", "hundred", "hungry", "hunt", "hurdle", "hurry", "hurt", "husband", "hybrid", "ice", "icon", "idea", "identify", "idle", "ignore", "ill", "illegal", "illness", "image", "imitate", "immense", "immune", "impact", "impose", "improve", "impulse", "inch", "include", "income", "increase", "index", "indicate", "indoor", "industry", "infant", "inflict", "inform", "inhale", "inherit", "initial", "inject", "injury", "inmate", "inner", "innocent", "input", "inquiry", "insane", "insect", "inside", "inspire", "install", "intact", "interest", "into", "invest", "invite", "involve", "iron", "island", "isolate", "issue", "item", "ivory", "jacket", "jaguar", "jar", "jazz", "jealous", "jeans", "jelly", "jewel", "job", "join", "joke", "journey", "joy", "judge", "juice", "jump", "jungle", "junior", "junk", "just", "kangaroo", "keen", "keep", "ketchup", "key", "kick", "kid", "kidney", "kind", "kingdom", "kiss", "kit", "kitchen", "kite", "kitten", "kiwi", "knee", "knife", "knock", "know", "lab", "label", "labor", "ladder", "lady", "lake", "lamp", "language", "laptop", "large", "later", "latin", "laugh", "laundry", "lava", "law", "lawn", "lawsuit", "layer", "lazy", "leader", "leaf", "learn", "leave", "lecture", "left", "leg", "legal", "legend", "leisure", "lemon", "lend", "length", "lens", "leopard", "lesson", "letter", "level", "liar", "liberty", "library", "license", "life", "lift", "light", "like", "limb", "limit", "link", "lion", "liquid", "list", "little", "live", "lizard", "load", "loan", "lobster", "local", "lock", "logic", "lonely", "long", "loop", "lottery", "loud", "lounge", "love", "loyal", "lucky", "luggage", "lumber", "lunar", "lunch", "luxury", "lyrics", "machine", "mad", "magic", "magnet", "maid", "mail", "main", "major", "make", "mammal", "man", "manage", "mandate", "mango", "mansion", "manual", "maple", "marble", "march", "margin", "marine", "market", "marriage", "mask", "mass", "master", "match", "material", "math", "matrix", "matter", "maximum", "maze", "meadow", "mean", "measure", "meat", "mechanic", "medal", "media", "melody", "melt", "member", "memory", "mention", "menu", "mercy", "merge", "merit", "merry", "mesh", "message", "metal", "method", "middle", "midnight", "milk", "million", "mimic", "mind", "minimum", "minor", "minute", "miracle", "mirror", "misery", "miss", "mistake", "mix", "mixed", "mixture", "mobile", "model", "modify", "mom", "moment", "monitor", "monkey", "monster", "month", "moon", "moral", "more", "morning", "mosquito", "mother", "motion", "motor", "mountain", "mouse", "move", "movie", "much", "muffin", "mule", "multiply", "muscle", "museum", "mushroom", "music", "must", "mutual", "myself", "mystery", "myth", "naive", "name", "napkin", "narrow", "nasty", "nation", "nature", "near", "neck", "need", "negative", "neglect", "neither", "nephew", "nerve", "nest", "net", "network", "neutral", "never", "news", "next", "nice", "night", "noble", "noise", "nominee", "noodle", "normal", "north", "nose", "notable", "note", "nothing", "notice", "novel", "now", "nuclear", "number", "nurse", "nut", "oak", "obey", "object", "oblige", "obscure", "observe", "obtain", "obvious", "occur", "ocean", "october", "odor", "off", "offer", "office", "often", "oil", "okay", "old", "olive", "olympic", "omit", "once", "one", "onion", "online", "only", "open", "opera", "opinion", "oppose", "option", "orange", "orbit", "orchard", "order", "ordinary", "organ", "orient", "original", "orphan", "ostrich", "other", "outdoor", "outer", "output", "outside", "oval", "oven", "over", "own", "owner", "oxygen", "oyster", "ozone", "pact", "paddle", "page", "pair", "palace", "palm", "panda", "panel", "panic", "panther", "paper", "parade", "parent", "park", "parrot", "party", "pass", "patch", "path", "patient", "patrol", "pattern", "pause", "pave", "payment", "peace", "peanut", "pear", "peasant", "pelican", "pen", "penalty", "pencil", "people", "pepper", "perfect", "permit", "person", "pet", "phone", "photo", "phrase", "physical", "piano", "picnic", "picture", "piece", "pig", "pigeon", "pill", "pilot", "pink", "pioneer", "pipe", "pistol", "pitch", "pizza", "place", "planet", "plastic", "plate", "play", "please", "pledge", "pluck", "plug", "plunge", "poem", "poet", "point", "polar", "pole", "police", "pond", "pony", "pool", "popular", "portion", "position", "possible", "post", "potato", "pottery", "poverty", "powder", "power", "practice", "praise", "predict", "prefer", "prepare", "present", "pretty", "prevent", "price", "pride", "primary", "print", "priority", "prison", "private", "prize", "problem", "process", "produce", "profit", "program", "project", "promote", "proof", "property", "prosper", "protect", "proud", "provide", "public", "pudding", "pull", "pulp", "pulse", "pumpkin", "punch", "pupil", "puppy", "purchase", "purity", "purpose", "purse", "push", "put", "puzzle", "pyramid", "quality", "quantum", "quarter", "question", "quick", "quit", "quiz", "quote", "rabbit", "raccoon", "race", "rack", "radar", "radio", "rail", "rain", "raise", "rally", "ramp", "ranch", "random", "range", "rapid", "rare", "rate", "rather", "raven", "raw", "razor", "ready", "real", "reason", "rebel", "rebuild", "recall", "receive", "recipe", "record", "recycle", "reduce", "reflect", "reform", "refuse", "region", "regret", "regular", "reject", "relax", "release", "relief", "rely", "remain", "remember", "remind", "remove", "render", "renew", "rent", "reopen", "repair", "repeat", "replace", "report", "require", "rescue", "resemble", "resist", "resource", "response", "result", "retire", "retreat", "return", "reunion", "reveal", "review", "reward", "rhythm", "rib", "ribbon", "rice", "rich", "ride", "ridge", "rifle", "right", "rigid", "ring", "riot", "ripple", "risk", "ritual", "rival", "river", "road", "roast", "robot", "robust", "rocket", "romance", "roof", "rookie", "room", "rose", "rotate", "rough", "round", "route", "royal", "rubber", "rude", "rug", "rule", "run", "runway", "rural", "sad", "saddle", "sadness", "safe", "sail", "salad", "salmon", "salon", "salt", "salute", "same", "sample", "sand", "satisfy", "satoshi", "sauce", "sausage", "save", "say", "scale", "scan", "scare", "scatter", "scene", "scheme", "school", "science", "scissors", "scorpion", "scout", "scrap", "screen", "script", "scrub", "sea", "search", "season", "seat", "second", "secret", "section", "security", "seed", "seek", "segment", "select", "sell", "seminar", "senior", "sense", "sentence", "series", "service", "session", "settle", "setup", "seven", "shadow", "shaft", "shallow", "share", "shed", "shell", "sheriff", "shield", "shift", "shine", "ship", "shiver", "shock", "shoe", "shoot", "shop", "short", "shoulder", "shove", "shrimp", "shrug", "shuffle", "shy", "sibling", "sick", "side", "siege", "sight", "sign", "silent", "silk", "silly", "silver", "similar", "simple", "since", "sing", "siren", "sister", "situate", "six", "size", "skate", "sketch", "ski", "skill", "skin", "skirt", "skull", "slab", "slam", "sleep", "slender", "slice", "slide", "slight", "slim", "slogan", "slot", "slow", "slush", "small", "smart", "smile", "smoke", "smooth", "snack", "snake", "snap", "sniff", "snow", "soap", "soccer", "social", "sock", "soda", "soft", "solar", "soldier", "solid", "solution", "solve", "someone", "song", "soon", "sorry", "sort", "soul", "sound", "soup", "source", "south", "space", "spare", "spatial", "spawn", "speak", "special", "speed", "spell", "spend", "sphere", "spice", "spider", "spike", "spin", "spirit", "split", "spoil", "sponsor", "spoon", "sport", "spot", "spray", "spread", "spring", "spy", "square", "squeeze", "squirrel", "stable", "stadium", "staff", "stage", "stairs", "stamp", "stand", "start", "state", "stay", "steak", "steel", "stem", "step", "stereo", "stick", "still", "sting", "stock", "stomach", "stone", "stool", "story", "stove", "strategy", "street", "strike", "strong", "struggle", "student", "stuff", "stumble", "style", "subject", "submit", "subway", "success", "such", "sudden", "suffer", "sugar", "suggest", "suit", "summer", "sun", "sunny", "sunset", "super", "supply", "supreme", "sure", "surface", "surge", "surprise", "surround", "survey", "suspect", "sustain", "swallow", "swamp", "swap", "swarm", "swear", "sweet", "swift", "swim", "swing", "switch", "sword", "symbol", "symptom", "syrup", "system", "table", "tackle", "tag", "tail", "talent", "talk", "tank", "tape", "target", "task", "taste", "tattoo", "taxi", "teach", "team", "tell", "ten", "tenant", "tennis", "tent", "term", "test", "text", "thank", "that", "theme", "then", "theory", "there", "they", "thing", "this", "thought", "three", "thrive", "throw", "thumb", "thunder", "ticket", "tide", "tiger", "tilt", "timber", "time", "tiny", "tip", "tired", "tissue", "title", "toast", "tobacco", "today", "toddler", "toe", "together", "toilet", "token", "tomato", "tomorrow", "tone", "tongue", "tonight", "tool", "tooth", "top", "topic", "topple", "torch", "tornado", "tortoise", "toss", "total", "tourist", "toward", "tower", "town", "toy", "track", "trade", "traffic", "tragic", "train", "transfer", "trap", "trash", "travel", "tray", "treat", "tree", "trend", "trial", "tribe", "trick", "trigger", "trim", "trip", "trophy", "trouble", "truck", "true", "truly", "trumpet", "trust", "truth", "try", "tube", "tuition", "tumble", "tuna", "tunnel", "turkey", "turn", "turtle", "twelve", "twenty", "twice", "twin", "twist", "two", "type", "typical", "ugly", "umbrella", "unable", "unaware", "uncle", "uncover", "under", "undo", "unfair", "unfold", "unhappy", "uniform", "unique", "unit", "universe", "unknown", "unlock", "until", "unusual", "unveil", "update", "upgrade", "uphold", "upon", "upper", "upset", "urban", "urge", "usage", "use", "used", "useful", "useless", "usual", "utility", "vacant", "vacuum", "vague", "valid", "valley", "valve", "van", "vanish", "vapor", "various", "vast", "vault", "vehicle", "velvet", "vendor", "venture", "venue", "verb", "verify", "version", "very", "vessel", "veteran", "viable", "vibrant", "vicious", "victory", "video", "view", "village", "vintage", "violin", "virtual", "virus", "visa", "visit", "visual", "vital", "vivid", "vocal", "voice", "void", "volcano", "volume", "vote", "voyage", "wage", "wagon", "wait", "walk", "wall", "walnut", "want", "warfare", "warm", "warrior", "wash", "wasp", "waste", "water", "wave", "way", "wealth", "weapon", "wear", "weasel", "weather", "web", "wedding", "weekend", "weird", "welcome", "west", "wet", "whale", "what", "wheat", "wheel", "when", "where", "whip", "whisper", "wide", "width", "wife", "wild", "will", "win", "window", "wine", "wing", "wink", "winner", "winter", "wire", "wisdom", "wise", "wish", "witness", "wolf", "woman", "wonder", "wood", "wool", "word", "work", "world", "worry", "worth", "wrap", "wreck", "wrestle", "wrist", "write", "wrong", "yard", "year", "yellow", "you", "young", "youth", "zebra", "zero", "zone", "zoo"];
 
@@ -342,6 +366,7 @@ if (WORDS.length !== 2048) {
   document.body.innerHTML = '<p style="color:red;padding:20px">Word list error: expected 2048 words, found ' + WORDS.length + '.</p>';
   throw new Error('bad word list length');
 }
+Object.freeze(WORDS);
 
 // ---------------------------------------------------------------------
 // Pure, auditable core primitives. No DOM access, no I/O, no randomness.
@@ -373,9 +398,16 @@ function createStandardCollector() {
   return { bits: [] };
 }
 function standardAddFlip(collector, isHeads) {
+  if (typeof isHeads !== 'boolean') {
+    throw new Error('standardAddFlip: isHeads must be a boolean');
+  }
   if (collector.bits.length < 11) {
     collector.bits.push(isHeads ? 1 : 0);
   }
+  return collector;
+}
+function standardUndoFlip(collector) {
+  if (collector.bits.length > 0) collector.bits.pop();
   return collector;
 }
 function standardIsComplete(collector) {
@@ -383,34 +415,78 @@ function standardIsComplete(collector) {
 }
 
 // Von Neumann extractor: HT -> 1, TH -> 0, HH/TT -> discard (null).
+// Rejects anything other than 'H'/'T' rather than silently treating it as
+// a discard -- an invalid symbol should never be able to masquerade as a
+// same-same pair.
 function vnExtractBit(firstSymbol, secondSymbol) {
+  if (firstSymbol !== 'H' && firstSymbol !== 'T') {
+    throw new Error('vnExtractBit: first symbol must be "H" or "T"');
+  }
+  if (secondSymbol !== 'H' && secondSymbol !== 'T') {
+    throw new Error('vnExtractBit: second symbol must be "H" or "T"');
+  }
   if (firstSymbol === 'H' && secondSymbol === 'T') return 1;
   if (firstSymbol === 'T' && secondSymbol === 'H') return 0;
   return null;
 }
 
-// Bias-resistant-mode collector: two physical flips = one extracted bit (or a discard).
+// Bias-resistant-mode collector. The ONLY state kept is the current word's
+// raw physical flip history ('H'/'T' symbols, oldest first). Everything
+// else -- extracted bits, the pending half of an in-progress pair, and the
+// observed/discarded pair counts -- is derived from that history on demand
+// by vnDeriveState. This single source of truth is what makes single-flip
+// undo exact: undoing a flip is just popping the last entry from history
+// and re-deriving, so it can never desynchronize from the real state.
 function createVNCollector() {
-  return { bits: [], pendingFirst: null, pairsObserved: 0, pairsDiscarded: 0 };
+  return { flips: [] };
+}
+function vnDeriveState(flips) {
+  const bits = [];
+  let pendingFirst = null;
+  let pairsObserved = 0;
+  let pairsDiscarded = 0;
+  for (const symbol of flips) {
+    if (bits.length >= 11) break;
+    if (pendingFirst === null) {
+      pendingFirst = symbol;
+      continue;
+    }
+    const bit = vnExtractBit(pendingFirst, symbol);
+    pairsObserved++;
+    pendingFirst = null;
+    if (bit === null) {
+      pairsDiscarded++;
+    } else {
+      bits.push(bit);
+    }
+  }
+  return { bits, pendingFirst, pairsObserved, pairsDiscarded };
 }
 function vnAddFlip(collector, symbol) {
-  if (collector.bits.length >= 11) return collector;
-  if (collector.pendingFirst === null) {
-    collector.pendingFirst = symbol;
-    return collector;
+  if (symbol !== 'H' && symbol !== 'T') {
+    throw new Error('vnAddFlip: symbol must be "H" or "T"');
   }
-  const bit = vnExtractBit(collector.pendingFirst, symbol);
-  collector.pairsObserved++;
-  collector.pendingFirst = null;
-  if (bit === null) {
-    collector.pairsDiscarded++;
-  } else if (collector.bits.length < 11) {
-    collector.bits.push(bit);
-  }
+  if (vnDeriveState(collector.flips).bits.length >= 11) return collector; // already complete; ignore
+  collector.flips.push(symbol);
+  return collector;
+}
+function vnUndoFlip(collector) {
+  if (collector.flips.length > 0) collector.flips.pop();
   return collector;
 }
 function vnIsComplete(collector) {
-  return collector.bits.length === 11;
+  return vnDeriveState(collector.flips).bits.length === 11;
+}
+
+// Pure decision helper for the "word complete -> next flip, or finished"
+// transition. Kept separate from DOM/global state so it's independently
+// testable, and so wordsCompleted can never be pushed past the target.
+function advanceAfterWord(wordsCompletedBefore, targetWords) {
+  const wordsCompletedAfter = wordsCompletedBefore + 1;
+  return {
+    wordsCompleted: wordsCompletedAfter,
+    finished: wordsCompletedAfter >= targetWords,
+  };
 }
 
 // ---------------------------------------------------------------------
@@ -426,72 +502,250 @@ function runSelfTests() {
       results.push({ name, pass: false, error: String(e && e.message || e) });
     }
   }
+  function expectThrow(name, fn) {
+    check(name, () => {
+      try { fn(); return false; } catch (e) { return true; }
+    });
+  }
 
+  // --- Word list integrity (self-consistency; canonical diff is development-time, see comment above) ---
   check('word list has exactly 2048 entries', () => WORDS.length === 2048);
   check('word 0 is "abandon"', () => WORDS[0] === 'abandon');
   check('word 2047 is "zoo"', () => WORDS[2047] === 'zoo');
+  check('word list is frozen against runtime mutation', () => Object.isFrozen(WORDS));
 
-  check('11 zero bits map to index 0 / "abandon"', () => {
-    const bits = [0,0,0,0,0,0,0,0,0,0,0];
-    return bitsArrayToIndex(bits) === 0 && indexToWord(bitsArrayToIndex(bits)) === 'abandon';
-  });
-  check('11 one bits map to index 2047 / "zoo"', () => {
-    const bits = [1,1,1,1,1,1,1,1,1,1,1];
-    return bitsArrayToIndex(bits) === 2047 && indexToWord(bitsArrayToIndex(bits)) === 'zoo';
+  // --- Exhaustive 11-bit <-> index <-> word mapping for all 2048 values ---
+  check('exhaustive bits->index->word mapping for all 2048 values', () => {
+    for (let i = 0; i < 2048; i++) {
+      const bits = [];
+      for (let b = 10; b >= 0; b--) bits.push((i >> b) & 1);
+      const idx = bitsArrayToIndex(bits);
+      if (idx !== i) throw new Error('round-trip mismatch at ' + i + ': got index ' + idx);
+      if (indexToWord(idx) !== WORDS[i]) throw new Error('word mismatch at index ' + i);
+    }
+    return true;
   });
   check('mapping is deterministic (same input -> same output, twice)', () => {
     const bits = [1,0,1,1,0,0,1,0,1,0,1];
     return bitsArrayToIndex(bits) === bitsArrayToIndex(bits.slice());
   });
-  check('a mid-range bit pattern maps to the expected index', () => {
-    // 10011000010 (binary) = 1218 (decimal)
-    const bits = [1,0,0,1,1,0,0,0,0,1,0];
-    return bitsArrayToIndex(bits) === 1218 && indexToWord(1218) === WORDS[1218];
-  });
 
+  // --- bitsArrayToIndex / indexToWord input validation ---
+  expectThrow('bitsArrayToIndex([]) rejects wrong length', () => bitsArrayToIndex([]));
+  expectThrow('bitsArrayToIndex([0]) rejects wrong length', () => bitsArrayToIndex([0]));
+  expectThrow('bitsArrayToIndex(12 bits) rejects wrong length', () => bitsArrayToIndex(new Array(12).fill(0)));
+  expectThrow('bitsArrayToIndex rejects a non-binary value', () => bitsArrayToIndex([0,1,0,1,0,1,0,1,0,1,2]));
+  expectThrow('bitsArrayToIndex rejects boolean values', () => bitsArrayToIndex(new Array(11).fill(true)));
+  expectThrow('bitsArrayToIndex(null) rejects non-array', () => bitsArrayToIndex(null));
+  expectThrow('indexToWord(-1) rejects out-of-range', () => indexToWord(-1));
+  expectThrow('indexToWord(2048) rejects out-of-range', () => indexToWord(2048));
+  expectThrow('indexToWord(1.5) rejects non-integer', () => indexToWord(1.5));
+  expectThrow('indexToWord("1") rejects non-number', () => indexToWord('1'));
+
+  // --- Standard collector ---
   check('standard collector accumulates exactly 11 bits, ignores extra flips', () => {
     let c = createStandardCollector();
     for (let i = 0; i < 15; i++) standardAddFlip(c, i % 2 === 0);
-    return c.bits.length === 11 && standardIsComplete(c);
+    return c.bits.length === 11 && standardIsComplete(c) && c.bits.every(b => b === 0 || b === 1);
+  });
+  expectThrow('standardAddFlip rejects non-boolean input', () => standardAddFlip(createStandardCollector(), 1));
+  check('standardUndoFlip removes exactly one bit', () => {
+    let c = createStandardCollector();
+    standardAddFlip(c, true);
+    standardAddFlip(c, false);
+    standardUndoFlip(c);
+    return c.bits.length === 1 && c.bits[0] === 1;
+  });
+  check('standardUndoFlip on an empty collector is a no-op', () => {
+    let c = createStandardCollector();
+    standardUndoFlip(c);
+    return c.bits.length === 0;
   });
 
+  // --- von Neumann extractor: all four pair outcomes, exhaustively ---
   check('von Neumann: HT -> 1', () => vnExtractBit('H', 'T') === 1);
   check('von Neumann: TH -> 0', () => vnExtractBit('T', 'H') === 0);
   check('von Neumann: HH -> discard', () => vnExtractBit('H', 'H') === null);
   check('von Neumann: TT -> discard', () => vnExtractBit('T', 'T') === null);
+  expectThrow('vnExtractBit rejects an invalid first symbol', () => vnExtractBit('X', 'H'));
+  expectThrow('vnExtractBit rejects an invalid second symbol', () => vnExtractBit('H', 'X'));
+  expectThrow('vnAddFlip rejects an invalid symbol', () => vnAddFlip(createVNCollector(), 'X'));
 
-  check('von Neumann collector stops at exactly 11 extracted bits', () => {
-    // Build a synthetic pair sequence with a discard before each valid
-    // pair, containing more than enough valid pairs to reach 11 bits.
-    const pairs = [];
-    for (let i = 0; i < 20; i++) {
-      pairs.push('HH');                          // discard filler
-      pairs.push(i % 2 === 0 ? 'HT' : 'TH');      // valid pair
-    }
+  // --- von Neumann collector: sequences ---
+  check('von Neumann: 11 alternating HT/TH pairs produce exactly 11 output bits', () => {
     let c = createVNCollector();
-    let completedDuringLoop = false;
-    for (const pair of pairs) {
-      vnAddFlip(c, pair[0]);
-      vnAddFlip(c, pair[1]);
-      if (vnIsComplete(c)) { completedDuringLoop = true; break; }
+    for (let i = 0; i < 11; i++) {
+      vnAddFlip(c, i % 2 === 0 ? 'H' : 'T');
+      vnAddFlip(c, i % 2 === 0 ? 'T' : 'H');
     }
-    const lenAtComplete = c.bits.length;
-    // Feeding another full valid pair after completion must not grow bits further.
+    return vnDeriveState(c.flips).bits.length === 11 && vnIsComplete(c);
+  });
+  check('von Neumann: only HT/TH pairs produce output bits amid a mixture of discards', () => {
+    let c = createVNCollector();
+    const pairs = ['HH', 'HT', 'TT', 'TH', 'HH', 'HT', 'TT', 'TT', 'TH', 'HH'];
+    for (const p of pairs) { vnAddFlip(c, p[0]); vnAddFlip(c, p[1]); }
+    const s = vnDeriveState(c.flips);
+    return JSON.stringify(s.bits) === JSON.stringify([1, 0, 1, 0])
+      && s.pairsObserved === 10 && s.pairsDiscarded === 6;
+  });
+  check('von Neumann: no change after completion (bits/pending/counters frozen)', () => {
+    let c = createVNCollector();
+    for (let i = 0; i < 11; i++) { vnAddFlip(c, 'H'); vnAddFlip(c, 'T'); }
+    const before = vnDeriveState(c.flips);
+    vnAddFlip(c, 'H'); vnAddFlip(c, 'T'); vnAddFlip(c, 'H'); // must all be no-ops
+    const after = vnDeriveState(c.flips);
+    return before.bits.length === 11 && JSON.stringify(before) === JSON.stringify(after);
+  });
+  check('von Neumann: a single H flip produces pending H, zero bits', () => {
+    let c = createVNCollector();
     vnAddFlip(c, 'H');
+    const s = vnDeriveState(c.flips);
+    return s.pendingFirst === 'H' && s.bits.length === 0;
+  });
+  check('von Neumann: a single T flip produces pending T, zero bits', () => {
+    let c = createVNCollector();
     vnAddFlip(c, 'T');
-    return completedDuringLoop && lenAtComplete === 11 && c.bits.length === 11;
+    const s = vnDeriveState(c.flips);
+    return s.pendingFirst === 'T' && s.bits.length === 0;
+  });
+  check('von Neumann: completing a pair clears the pending flip', () => {
+    let c = createVNCollector();
+    vnAddFlip(c, 'H'); vnAddFlip(c, 'H');
+    return vnDeriveState(c.flips).pendingFirst === null;
+  });
+  check('von Neumann: reset clears flips, bits, pending, and both counters', () => {
+    let c = createVNCollector();
+    vnAddFlip(c, 'H'); vnAddFlip(c, 'T'); vnAddFlip(c, 'H');
+    c = createVNCollector(); // simulates pressing "Reset this word"
+    const s = vnDeriveState(c.flips);
+    return c.flips.length === 0 && s.bits.length === 0 && s.pendingFirst === null
+      && s.pairsObserved === 0 && s.pairsDiscarded === 0;
   });
 
-  check('fresh word state has no bits and no pending flip', () => {
-    const c = createVNCollector();
-    return c.bits.length === 0 && c.pendingFirst === null;
+  // --- von Neumann undo: exact single-flip semantics (the Priority 1 bug fix) ---
+  function vnFromSequence(seq) {
+    let c = createVNCollector();
+    for (const s of seq) vnAddFlip(c, s);
+    return c;
+  }
+  check('undo: H -> undo -> empty', () => {
+    let c = vnFromSequence(['H']);
+    vnUndoFlip(c);
+    const s = vnDeriveState(c.flips);
+    return c.flips.length === 0 && s.bits.length === 0 && s.pendingFirst === null;
   });
-  check('completing a word and starting a new one does not carry state over', () => {
+  check('undo: HT -> undo -> pending H, zero output bits', () => {
+    let c = vnFromSequence(['H', 'T']);
+    vnUndoFlip(c);
+    const s = vnDeriveState(c.flips);
+    return s.pendingFirst === 'H' && s.bits.length === 0;
+  });
+  check('undo: TH -> undo -> pending T, zero output bits', () => {
+    let c = vnFromSequence(['T', 'H']);
+    vnUndoFlip(c);
+    const s = vnDeriveState(c.flips);
+    return s.pendingFirst === 'T' && s.bits.length === 0;
+  });
+  check('undo: HH -> undo -> pending H, zero output bits', () => {
+    let c = vnFromSequence(['H', 'H']);
+    vnUndoFlip(c);
+    const s = vnDeriveState(c.flips);
+    return s.pendingFirst === 'H' && s.bits.length === 0;
+  });
+  check('undo: TT -> undo -> pending T, zero output bits', () => {
+    let c = vnFromSequence(['T', 'T']);
+    vnUndoFlip(c);
+    const s = vnDeriveState(c.flips);
+    return s.pendingFirst === 'T' && s.bits.length === 0;
+  });
+  check('undo: HTHT -> undo -> first pair remains as output bit 1, second becomes pending H', () => {
+    let c = vnFromSequence(['H', 'T', 'H', 'T']);
+    vnUndoFlip(c);
+    const s = vnDeriveState(c.flips);
+    return JSON.stringify(s.bits) === JSON.stringify([1]) && s.pendingFirst === 'H'
+      && s.pairsObserved === 1 && s.pairsDiscarded === 0;
+  });
+  check('undo: HTHH -> undo -> first pair remains as output bit 1, second becomes pending H', () => {
+    let c = vnFromSequence(['H', 'T', 'H', 'H']);
+    vnUndoFlip(c);
+    const s = vnDeriveState(c.flips);
+    return JSON.stringify(s.bits) === JSON.stringify([1]) && s.pendingFirst === 'H'
+      && s.pairsObserved === 1 && s.pairsDiscarded === 0;
+  });
+  check('vnUndoFlip on an empty collector is a no-op', () => {
+    let c = createVNCollector();
+    vnUndoFlip(c);
+    return c.flips.length === 0;
+  });
+
+  // --- Invariants ---
+  check('invariant: VN bits never exceed 11, pending is null/H/T, observed >= discarded', () => {
+    let c = createVNCollector();
+    const symbols = 'HTHHTTHTTHTHTHHTTHTHTHTHTTHTHTHTHTHTHTH'.split('');
+    for (const sym of symbols) {
+      vnAddFlip(c, sym);
+      const s = vnDeriveState(c.flips);
+      if (s.bits.length > 11) return false;
+      if (s.pendingFirst !== null && s.pendingFirst !== 'H' && s.pendingFirst !== 'T') return false;
+      if (s.pairsObserved < s.pairsDiscarded) return false;
+    }
+    return true;
+  });
+  check('invariant: standard bits never exceed 11 and are always 0/1', () => {
+    let c = createStandardCollector();
+    for (let i = 0; i < 20; i++) {
+      standardAddFlip(c, i % 3 === 0);
+      if (c.bits.length > 11) return false;
+      if (!c.bits.every(b => b === 0 || b === 1)) return false;
+    }
+    return true;
+  });
+
+  // --- advanceAfterWord: the word-count state-machine helper never overshoots the target ---
+  check('advanceAfterWord: never finished before the target word count', () => {
+    for (const target of [11, 23]) {
+      for (let w = 0; w < target - 1; w++) {
+        if (advanceAfterWord(w, target).finished) return false;
+      }
+    }
+    return true;
+  });
+  check('advanceAfterWord: finished exactly at the target word count', () => {
+    return advanceAfterWord(10, 11).finished === true && advanceAfterWord(22, 23).finished === true;
+  });
+  check('advanceAfterWord: wordsCompleted never exceeds target across a full run', () => {
+    for (const target of [11, 23]) {
+      let w = 0;
+      for (let i = 0; i < target; i++) {
+        const r = advanceAfterWord(w, target);
+        w = r.wordsCompleted;
+        if (w > target) return false;
+      }
+      if (w !== target) return false;
+    }
+    return true;
+  });
+
+  // --- Fresh/cleared state, no carry-over between words ---
+  check('fresh standard word state has no bits', () => createStandardCollector().bits.length === 0);
+  check('fresh VN word state has no flips, no bits, no pending flip', () => {
+    const c = createVNCollector();
+    const s = vnDeriveState(c.flips);
+    return c.flips.length === 0 && s.bits.length === 0 && s.pendingFirst === null;
+  });
+  check('completing a word and starting a new one does not carry state over (standard)', () => {
     let c = createStandardCollector();
     for (let i = 0; i < 11; i++) standardAddFlip(c, true);
     const finishedBits = c.bits;
     c = createStandardCollector(); // simulates "clear and continue"
     return finishedBits.length === 11 && c.bits.length === 0 && c.bits !== finishedBits;
+  });
+  check('completing a word and starting a new one does not carry state over (VN)', () => {
+    let c = createVNCollector();
+    for (let i = 0; i < 11; i++) { vnAddFlip(c, 'H'); vnAddFlip(c, 'T'); }
+    const finishedFlips = c.flips;
+    c = createVNCollector(); // simulates "clear and continue"
+    return finishedFlips.length === 22 && c.flips.length === 0 && c.flips !== finishedFlips;
   });
 
   return results;
@@ -499,16 +753,18 @@ function runSelfTests() {
 
 // ---------------------------------------------------------------------
 // UI wiring. State below is intentionally minimal: only the in-progress
-// word's collector and a plain count of completed words are kept. No
-// array of completed words or bits ever exists.
+// word's collector, the single completed word awaiting confirmation (if
+// any), and a plain count of completed words are kept. No array of
+// completed words, no complete-entropy buffer, ever exists.
 // ---------------------------------------------------------------------
 let seedLength = 12;          // 12 or 24
 let mode = 'standard';        // 'standard' | 'vn'
 let coinCount = 3;            // 1..9
 let targetEntropyWords = 11;  // derived from seedLength
 let wordsCompleted = 0;       // count only
-let collector = null;         // current word's in-progress collector
-let currentResult = null;     // { binary, index, word } for the word-complete screen only
+let collector = null;         // current word's in-progress collector, or null
+let currentWord = null;       // the single completed word awaiting confirmation, or null
+let configLocked = false;     // true from Begin until Start-over; freezes seed length/mode/coin count
 
 const screens = {
   setup: document.getElementById('screen-setup'),
@@ -530,20 +786,26 @@ const optModeVN = document.getElementById('opt-mode-vn');
 const modeNote = document.getElementById('mode-note');
 const setupCoinValue = document.getElementById('setup-coin-value');
 
-const MODE_NOTES = {
-  standard: 'Each entropy bit comes directly from one coin flip. This page alternates which face you’re asked to start each flip on, and rotates through your coins, as techniques intended to reduce known physical coin-toss biases (such as the same-side bias measured in large real-coin studies). This does not make a physical coin perfectly unbiased or guarantee the resulting bits are mathematically independent and identically distributed.',
-  vn: 'Each entropy bit comes from two consecutive coin flips: Heads→Tails = 1, Tails→Heads = 0, and Heads→Heads / Tails→Tails are discarded and re-flipped. This removes first-order heads/tails bias under the usual assumption that consecutive flips are independent trials from a fixed (even if unfair) coin. It does not guarantee perfect randomness against arbitrary correlations between flips, and it does not make the coin "perfectly random."',
-};
+const MODE_NOTES = Object.freeze({
+  standard: 'Standard mode records the physical landing face directly, one flip per bit. The starting-face procedure below is intended to reduce exposure to known starting-side/same-side effects across the overall sequence — it is not a randomness extractor and does not guarantee unbiased or independent bits. The displayed starting face is a procedure for the toss, not itself an entropy bit.',
+  vn: 'Bias-resistant mode uses a von Neumann extractor: two flips per output bit. Heads→Tails = 1, Tails→Heads = 0, Heads→Heads and Tails→Tails are discarded and re-flipped. This removes fixed heads/tails bias when consecutive flips can be modeled as independent trials with a stable but unknown probability of heads. It does not protect against arbitrary dependence between consecutive flips.',
+});
 
 function setLen(len) {
+  if (configLocked) return;
   seedLength = len;
   optLen12.classList.toggle('active', len === 12);
+  optLen12.setAttribute('aria-pressed', String(len === 12));
   optLen24.classList.toggle('active', len === 24);
+  optLen24.setAttribute('aria-pressed', String(len === 24));
 }
 function setMode(m) {
+  if (configLocked) return;
   mode = m;
   optModeStandard.classList.toggle('active', m === 'standard');
+  optModeStandard.setAttribute('aria-pressed', String(m === 'standard'));
   optModeVN.classList.toggle('active', m === 'vn');
+  optModeVN.setAttribute('aria-pressed', String(m === 'vn'));
   modeNote.textContent = MODE_NOTES[m];
 }
 optLen12.addEventListener('click', () => setLen(12));
@@ -555,10 +817,12 @@ function updateSetupCoinDisplay() {
   setupCoinValue.textContent = coinCount + (coinCount === 1 ? ' coin' : ' coins');
 }
 document.getElementById('coin-dec').addEventListener('click', () => {
+  if (configLocked) return;
   coinCount = Math.max(1, coinCount - 1);
   updateSetupCoinDisplay();
 });
 document.getElementById('coin-inc').addEventListener('click', () => {
+  if (configLocked) return;
   coinCount = Math.min(9, coinCount + 1);
   updateSetupCoinDisplay();
 });
@@ -568,7 +832,7 @@ document.getElementById('btn-run-tests').addEventListener('click', () => {
   const anyFail = results.some(r => !r.pass);
   const lines = results.map(r => (r.pass ? 'PASS' : 'FAIL') + '  ' + r.name + (r.error ? '  (' + r.error + ')' : ''));
   const out = document.getElementById('test-output');
-  out.textContent = lines.join('\n') + '\n\n' + (anyFail ? 'One or more self-tests FAILED.' : 'All self-tests passed.');
+  out.textContent = lines.join('\n') + '\n\n' + results.length + ' checks. ' + (anyFail ? 'One or more self-tests FAILED.' : 'All self-tests passed.');
   out.classList.toggle('fail', anyFail);
   out.classList.toggle('pass', !anyFail);
 });
@@ -576,7 +840,9 @@ document.getElementById('btn-run-tests').addEventListener('click', () => {
 document.getElementById('btn-begin').addEventListener('click', () => {
   targetEntropyWords = seedLength === 12 ? 11 : 23;
   wordsCompleted = 0;
+  currentWord = null;
   collector = mode === 'standard' ? createStandardCollector() : createVNCollector();
+  configLocked = true; // seed length, mode, and coin count can no longer change mid-generation
   renderFlipScreen();
   showScreen('flip');
 });
@@ -633,12 +899,14 @@ function renderStandard() {
 
   // Deterministic (RNG-free) alternation: odd word numbers start heads-up,
   // even word numbers start tails-up; within a word, alternate each flip.
+  // This is a toss procedure only -- not itself an entropy bit.
   const wordBaseHeads = (currentEntropyWordNumber() % 2 === 1);
   const startHeadsUp = (collector.bits.length % 2 === 0) ? wordBaseHeads : !wordBaseHeads;
   stdStartSideValue.textContent = startHeadsUp ? 'HEADS UP' : 'TAILS UP';
 }
 
 function handleStandardFlip(isHeads) {
+  if (!collector) return; // already finalized; ignore stray/double clicks
   standardAddFlip(collector, isHeads);
   if (standardIsComplete(collector)) {
     finalizeWord();
@@ -649,10 +917,12 @@ function handleStandardFlip(isHeads) {
 document.getElementById('std-btn-heads').addEventListener('click', () => handleStandardFlip(true));
 document.getElementById('std-btn-tails').addEventListener('click', () => handleStandardFlip(false));
 document.getElementById('std-btn-undo').addEventListener('click', () => {
-  if (collector.bits.length > 0) collector.bits.pop();
+  if (!collector) return;
+  standardUndoFlip(collector);
   renderStandard();
 });
 document.getElementById('std-btn-reset').addEventListener('click', () => {
+  if (!collector) return;
   collector = createStandardCollector();
   renderStandard();
 });
@@ -665,18 +935,20 @@ const vnPairProgress = document.getElementById('vn-pair-progress');
 const vnMeta = document.getElementById('vn-meta');
 
 function renderVN() {
-  renderBitBoxes(vnBitsDisplay, collector.bits);
-  vnStatus.textContent = 'Extracted ' + collector.bits.length + ' of 11 bits';
+  const state = vnDeriveState(collector.flips);
+  renderBitBoxes(vnBitsDisplay, state.bits);
+  vnStatus.textContent = 'Extracted ' + state.bits.length + ' of 11 bits';
   vnCoinValue.textContent = 'Coin ' + currentCoinNumber() + ' of ' + coinCount;
-  if (collector.pendingFirst === null) {
+  if (state.pendingFirst === null) {
     vnPairProgress.textContent = 'Flip A of this pair';
   } else {
-    vnPairProgress.textContent = 'Flip B of this pair (A was ' + (collector.pendingFirst === 'H' ? 'Heads' : 'Tails') + ')';
+    vnPairProgress.textContent = 'Flip B of this pair (A was ' + (state.pendingFirst === 'H' ? 'Heads' : 'Tails') + ')';
   }
-  vnMeta.textContent = 'Pairs observed: ' + collector.pairsObserved + ' · discarded (same-same): ' + collector.pairsDiscarded;
+  vnMeta.textContent = 'Pairs observed: ' + state.pairsObserved + ' · discarded (same-same): ' + state.pairsDiscarded;
 }
 
 function handleVNFlip(symbol) {
+  if (!collector) return; // already finalized; ignore stray/double clicks
   vnAddFlip(collector, symbol);
   if (vnIsComplete(collector)) {
     finalizeWord();
@@ -687,44 +959,42 @@ function handleVNFlip(symbol) {
 document.getElementById('vn-btn-heads').addEventListener('click', () => handleVNFlip('H'));
 document.getElementById('vn-btn-tails').addEventListener('click', () => handleVNFlip('T'));
 document.getElementById('vn-btn-undo').addEventListener('click', () => {
-  if (collector.pendingFirst !== null) {
-    collector.pendingFirst = null;
-  } else if (collector.bits.length > 0) {
-    collector.bits.pop();
-  }
+  if (!collector) return;
+  vnUndoFlip(collector);
   renderVN();
 });
 document.getElementById('vn-btn-reset').addEventListener('click', () => {
+  if (!collector) return;
   collector = createVNCollector();
   renderVN();
 });
 
 // --- Word-complete screen ---
-const wcBinary = document.getElementById('wc-binary');
 const wcWord = document.getElementById('wc-word');
-const wcIndex = document.getElementById('wc-index');
 
 function finalizeWord() {
-  const bits = collector.bits;
-  const index = bitsArrayToIndex(bits);
-  const word = indexToWord(index);
-  currentResult = { binary: bits.join(''), index, word };
-  collector = null; // this word's raw bits are gone the instant we have the word
-  wcBinary.textContent = currentResult.binary;
-  wcWord.textContent = currentResult.word;
-  wcIndex.textContent = String(currentResult.index);
+  if (!collector) {
+    throw new Error('finalizeWord: no active collector to finalize');
+  }
+  const bits = mode === 'standard' ? collector.bits : vnDeriveState(collector.flips).bits;
+  if (bits.length !== 11) {
+    throw new Error('finalizeWord: collector does not have exactly 11 bits');
+  }
+  const word = indexToWord(bitsArrayToIndex(bits));
+  collector = null; // this word's raw flip/bit data is gone the instant we have the word
+  currentWord = word;
+  wcWord.textContent = currentWord;
   showScreen('wordComplete');
 }
 
 document.getElementById('btn-continue').addEventListener('click', () => {
-  // Explicitly clear this word's result from state and DOM before moving on.
-  currentResult = null;
-  wcBinary.textContent = '';
+  if (currentWord === null) return; // nothing to confirm; ignore stray/double clicks
+  currentWord = null;
   wcWord.textContent = '';
-  wcIndex.textContent = '';
 
-  wordsCompleted++;
-  if (wordsCompleted >= targetEntropyWords) {
+  const advance = advanceAfterWord(wordsCompleted, targetEntropyWords);
+  wordsCompleted = advance.wordsCompleted;
+  if (advance.finished) {
     showFinished();
   } else {
     collector = mode === 'standard' ? createStandardCollector() : createVNCollector();
@@ -736,18 +1006,24 @@ document.getElementById('btn-continue').addEventListener('click', () => {
 // --- Finished screen ---
 const finishedBody = document.getElementById('finished-body');
 function showFinished() {
-  const finalWordNumber = seedLength; // 12th or 24th
+  const isTwelve = seedLength === 12;
+  const finalWordNumber = seedLength; // 12 or 24
+  const leftoverEntropyBits = isTwelve ? 7 : 3;
+  const checksumBits = isTwelve ? 4 : 8;
   finishedBody.textContent =
-    'You have generated ' + targetEntropyWords + ' of ' + targetEntropyWords + ' entropy words.\n\n' +
-    'The ' + finalWordNumber + (finalWordNumber === 12 ? 'th' : 'th') + ' BIP39 checksum word is intentionally NOT generated by this application.\n\n' +
-    'Generate the final word separately using your trusted hardware device, or another explicitly trusted offline method (for example, the iancoleman BIP39 tool, run from its downloaded standalone build on an air-gapped machine).\n\n' +
-    'Then close this page.';
+    'You generated ' + targetEntropyWords + ' of ' + targetEntropyWords + ' entropy words.\n\n' +
+    'The ' + finalWordNumber + 'th BIP39 word is intentionally not generated by this application. ' +
+    'It is not simply a checksum word — it contains the remaining ' + leftoverEntropyBits + ' entropy bits ' +
+    'plus the ' + checksumBits + '-bit checksum, computed from the complete entropy.\n\n' +
+    'Generate it using trusted hardware that supports entering externally generated entropy. ' +
+    'See README.md for workflow details.';
   showScreen('finished');
 }
 document.getElementById('btn-start-over').addEventListener('click', () => {
   wordsCompleted = 0;
   collector = null;
-  currentResult = null;
+  currentWord = null;
+  configLocked = false;
   showScreen('setup');
 });
 
