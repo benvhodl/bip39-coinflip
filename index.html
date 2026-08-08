@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIP39 Coin-Flip Entropy Generator (entropy words only)</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0f1115;
+    --panel: #1a1d24;
+    --text: #eef0f3;
+    --muted: #8b93a1;
+    --accent: #8c6fe6;
+    --accent2: #2fbf71;
+    --bit-empty: #2a2e38;
+    --bit-filled: #8c6fe6;
+    --danger: #e05c5c;
+    --warn-bg: #2a2118;
+    --warn-border: #5c4326;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 60px;
+  }
+  .wrap { width: 100%; max-width: 520px; }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; text-align: center; }
+  .subtitle { text-align: center; color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
+  .panel { background: var(--panel); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+  .hidden { display: none !important; }
+
+  .security-banner {
+    background: #12141a;
+    border: 1px solid #3a3f4b;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 18px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .security-banner strong { color: var(--text); }
+  .pipeline {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    white-space: pre;
+    overflow-x: auto;
+    margin: 8px 0 0;
+  }
+
+  .field-group { margin-bottom: 16px; }
+  .field-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
+  .choice-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .choice-btn {
+    background: #22252e;
+    color: var(--text);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 12px 10px;
+    font-weight: 700;
+    font-size: 0.92rem;
+    text-align: center;
+    cursor: pointer;
+  }
+  .choice-btn .choice-sub {
+    display: block;
+    font-weight: 400;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .choice-btn.active { border-color: var(--accent); background: #2a2440; }
+
+  .mode-note {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.6;
+    background: #12141a;
+    border: 1px dashed #3a3f4b;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+  }
+
+  .bits { display: flex; justify-content: center; gap: 6px; margin: 8px 0 18px; flex-wrap: wrap; }
+  .bit {
+    width: 28px; height: 34px; border-radius: 6px;
+    background: var(--bit-empty);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 1rem; color: var(--text);
+    border: 2px solid transparent;
+  }
+  .bit.filled { background: var(--bit-filled); color: #fff; }
+  .bit.current { border-color: var(--accent2); }
+
+  .status-line { text-align: center; color: var(--muted); font-size: 0.9rem; margin-bottom: 4px; }
+  .flip-count { text-align: center; font-size: 1.5rem; font-weight: 700; margin-bottom: 18px; }
+
+  .coin-box, .start-side {
+    text-align: center;
+    background: #12141a;
+    border: 1px dashed #3a3f4b;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+  }
+  .start-side-label { color: var(--muted); font-size: 0.78rem; }
+  .start-side-value, .coin-value {
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    color: var(--accent2);
+    margin: 2px 0;
+  }
+  .coin-value { color: var(--accent); }
+  .coin-stepper { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 8px; }
+  .coin-stepper button {
+    width: 30px; height: 30px; padding: 0; border-radius: 8px;
+    background: #2a2e38; color: var(--text); font-size: 1.1rem; font-weight: 700;
+  }
+  .coin-stepper span { color: var(--muted); font-size: 0.78rem; min-width: 90px; }
+
+  .vn-meta { text-align: center; color: var(--muted); font-size: 0.78rem; margin-top: 10px; }
+
+  .flip-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  button { font: inherit; cursor: pointer; border: none; border-radius: 12px; padding: 18px 12px; font-weight: 700; font-size: 1.1rem; transition: transform 0.05s ease; }
+  button:active { transform: scale(0.97); }
+  .btn-heads { background: var(--accent); color: #fff; }
+  .btn-tails { background: #3a3f4b; color: var(--text); }
+  .btn-heads .sub, .btn-tails .sub { display: block; font-weight: 400; font-size: 0.75rem; opacity: 0.8; margin-top: 2px; }
+
+  .row-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .row-actions button { flex: 1; padding: 10px; font-size: 0.85rem; background: #2a2e38; color: var(--muted); font-weight: 600; }
+
+  .result { text-align: center; }
+  .result .word { font-size: 2.4rem; font-weight: 800; color: var(--accent2); margin: 8px 0 4px; word-break: break-word; }
+  .result .meta { color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+  .result .meta code { background: #2a2e38; padding: 1px 6px; border-radius: 4px; }
+  .result .meta.warn { color: #e0b45c; margin-top: 10px; }
+  .pick-another { width: 100%; margin-top: 16px; background: var(--accent2); color: #06251a; padding: 16px; font-size: 1rem; }
+
+  .btn-primary { width: 100%; background: var(--accent); color: #fff; padding: 16px; font-size: 1rem; }
+  .begin-btn { margin-top: 4px; }
+
+  .finished-title { text-align: center; font-size: 1.3rem; font-weight: 800; color: var(--accent2); margin-bottom: 12px; }
+  .finished-body { color: var(--text); font-size: 0.92rem; line-height: 1.7; white-space: pre-line; margin-bottom: 18px; }
+
+  details { color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+  details summary { cursor: pointer; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  details ul { margin: 8px 0; padding-left: 20px; }
+  .diagnostics { margin-top: 14px; }
+  .diag-desc { font-size: 0.78rem; margin: 0 0 8px; }
+  #test-output {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    background: #12141a;
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 8px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  #test-output.fail { color: var(--danger); }
+  #test-output.pass { color: var(--accent2); }
+  .how-it-works { margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BIP39 Coin-Flip Entropy Generator</h1>
+  <div class="subtitle">Generates entropy words from physical coin flips. Never the final word.</div>
+
+  <!-- ==================== SETUP SCREEN ==================== -->
+  <div class="panel" id="screen-setup">
+    <div class="security-banner">
+      <strong>This computer will never hold your complete BIP39 seed.</strong>
+      It stops one word short. You get the final checksum word from a
+      trusted hardware device (or an explicitly trusted offline tool)
+      separately, outside this page.
+      <div class="pipeline">physical coin
+     |
+this computer  --&gt;  entropy words only  --&gt;  you write them down
+     |
+computer forgets them
+     |
+final checksum word generated elsewhere
+     |
+complete seed exists only outside this computer</div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Seed length</div>
+      <div class="choice-row">
+        <button type="button" class="choice-btn active" id="opt-len-12" data-len="12">12-word BIP39 seed<span class="choice-sub">Generates 11 entropy words</span></button>
+        <button type="button" class="choice-btn" id="opt-len-24" data-len="24">24-word BIP39 seed<span class="choice-sub">Generates 23 entropy words</span></button>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Entropy mode</div>
+      <div class="choice-row">
+        <button type="button" class="choice-btn active" id="opt-mode-standard" data-mode="standard">Standard<span class="choice-sub">1 flip = 1 bit</span></button>
+        <button type="button" class="choice-btn" id="opt-mode-vn" data-mode="vn">Bias-resistant<span class="choice-sub">Von Neumann, 2 flips = 1 bit</span></button>
+      </div>
+    </div>
+
+    <div class="mode-note" id="mode-note"></div>
+
+    <div class="coin-box">
+      <div class="start-side-label">Coins in rotation (use a different physical coin each word)</div>
+      <div class="coin-value" id="setup-coin-value">3 coins</div>
+      <div class="coin-stepper">
+        <button type="button" id="coin-dec" aria-label="Fewer coins">&minus;</button>
+        <span>1&ndash;9 coins</span>
+        <button type="button" id="coin-inc" aria-label="More coins">+</button>
+      </div>
+    </div>
+
+    <button type="button" class="btn-primary begin-btn" id="btn-begin">Begin</button>
+
+    <details class="how-it-works">
+      <summary>Security model &amp; honesty notes</summary>
+      <ul>
+        <li><strong>This app deliberately stops one word short.</strong> For a 12-word seed it generates entropy words 1&ndash;11 and never touches word 12. For a 24-word seed it generates words 1&ndash;23 and never touches word 24. The omitted final word carries the BIP39 checksum; this page contains no checksum code at all &mdash; not because it's turned off, but because it was never written. There is no button, mode, or hidden feature anywhere in this file that computes a 12th or 24th word, reconstructs full entropy, derives a seed, or builds an xprv/xpub. The only cryptographic logic here is the deterministic mapping from 11 bits to one of the 2048 BIP39 words.</li>
+        <li>Get the final checksum word from a trusted hardware device that supports entering your own entropy, or from an explicitly trusted offline tool such as <a href="https://github.com/iancoleman/bip39" style="color:inherit">iancoleman's BIP39 tool</a> run from its downloaded standalone build on an air-gapped machine &mdash; never on a machine that has also seen these entropy words over the network.</li>
+        <li>Only one word's worth of state exists in memory at a time. There is no array anywhere in this page holding your generated words as a growing list, and the page never displays more than the single word you just finished. When you press "clear and continue," that word's bits, its computed index, and the word text are all discarded before the next word begins.</li>
+        <li>No localStorage, sessionStorage, cookies, IndexedDB, service workers, or network requests are used anywhere in this file. Nothing you do here is written to disk or sent anywhere. Reloading or closing the tab leaves nothing behind.</li>
+        <li><strong>Standard mode</strong> is one coin flip per bit. This page alternates which face you're asked to start each flip on (within a word) and which starting face begins each new word, and rotates through your coins &mdash; techniques intended to reduce known physical coin-toss biases, most notably the same-side bias documented in large empirical studies of real coin flips. This is honestly a mitigation, not a fix: it does not make a physical coin perfectly unbiased, and the resulting bits should not be assumed to be mathematically independent and identically distributed.</li>
+        <li>Unlike some coin-flip tools, the starting-face pattern here is <strong>fully deterministic</strong> (alternating by word number and by flip number) rather than drawn from the browser's random number generator. This page uses no <code>crypto.getRandomValues</code>, <code>Math.random</code>, or any other software RNG anywhere, for anything. The tradeoff: an adversary who knows this algorithm could predict which face you're told to start on. That doesn't reduce the quality of your entropy below the baseline physical-coin bias described above, because the bit value recorded for any flip is always whatever the physical coin actually showed you, never a value derived from software &mdash; but it is a real, honestly-stated difference from a design that randomizes the starting face per word.</li>
+        <li><strong>Bias-resistant mode</strong> uses a von Neumann extractor: flip the coin twice per output bit; Heads&rarr;Tails yields 1, Tails&rarr;Heads yields 0, and Heads&rarr;Heads or Tails&rarr;Tails are discarded and re-flipped. This removes first-order heads/tails bias for any fixed-but-unknown coin bias, under the usual assumption that consecutive flips are independent trials. It does not guarantee perfect randomness against arbitrary correlations between flips (for example, if how you catch or re-place the coin depends systematically on the previous outcome). It does not claim to make the physical coin "perfectly random."</li>
+        <li>The "coins in rotation" setting cycles which physical coin you use, one per word, so a single coin's manufacturing defect or wear doesn't bias every word the same way.</li>
+      </ul>
+    </details>
+
+    <details class="diagnostics">
+      <summary>Diagnostics &mdash; run self-tests</summary>
+      <p class="diag-desc">Runs deterministic checks against synthetic test vectors only (not your real flips) &mdash; word list integrity, bit&rarr;word mapping, and the von Neumann extractor logic.</p>
+      <button type="button" id="btn-run-tests">Run self-tests</button>
+      <pre id="test-output">(not run yet)</pre>
+    </details>
+  </div>
+
+  <!-- ==================== FLIP SCREEN ==================== -->
+  <div class="panel hidden" id="screen-flip">
+    <div class="status-line" id="flip-seed-label"></div>
+    <div class="flip-count" id="flip-word-progress"></div>
+
+    <div id="flip-standard" class="hidden">
+      <div class="status-line">Bit order: first flip = leftmost (most significant)</div>
+      <div class="bits" id="std-bits-display"></div>
+      <div class="status-line" id="std-flip-count"></div>
+      <div class="coin-box">
+        <div class="start-side-label">Use for this whole word</div>
+        <div class="coin-value" id="std-coin-value"></div>
+      </div>
+      <div class="start-side">
+        <div class="start-side-label">Place that coin showing</div>
+        <div class="start-side-value" id="std-start-side-value"></div>
+        <div class="start-side-label">then toss it so it lands and bounces (don't catch it)</div>
+      </div>
+      <div class="flip-buttons">
+        <button class="btn-heads" id="std-btn-heads" type="button">Heads<span class="sub">counts as 1</span></button>
+        <button class="btn-tails" id="std-btn-tails" type="button">Tails<span class="sub">counts as 0</span></button>
+      </div>
+      <div class="row-actions">
+        <button type="button" id="std-btn-undo">Undo last flip</button>
+        <button type="button" id="std-btn-reset">Reset this word</button>
+      </div>
+    </div>
+
+    <div id="flip-vn" class="hidden">
+      <div class="status-line">Flip twice per bit: Heads&rarr;Tails = 1, Tails&rarr;Heads = 0, same-same = discard</div>
+      <div class="bits" id="vn-bits-display"></div>
+      <div class="status-line" id="vn-status"></div>
+      <div class="coin-box">
+        <div class="start-side-label">Use for this whole word</div>
+        <div class="coin-value" id="vn-coin-value"></div>
+      </div>
+      <div class="start-side">
+        <div class="start-side-label" id="vn-pair-label">This pair</div>
+        <div class="start-side-value" id="vn-pair-progress"></div>
+      </div>
+      <div class="flip-buttons">
+        <button class="btn-heads" id="vn-btn-heads" type="button">Heads</button>
+        <button class="btn-tails" id="vn-btn-tails" type="button">Tails</button>
+      </div>
+      <div class="row-actions">
+        <button type="button" id="vn-btn-undo">Undo last flip</button>
+        <button type="button" id="vn-btn-reset">Reset this word</button>
+      </div>
+      <div class="vn-meta" id="vn-meta"></div>
+    </div>
+  </div>
+
+  <!-- ==================== WORD COMPLETE SCREEN ==================== -->
+  <div class="panel result hidden" id="screen-word-complete">
+    <div class="status-line">Binary: <code id="wc-binary" style="font-family:monospace"></code></div>
+    <div class="word" id="wc-word"></div>
+    <div class="meta">Index into word list (0&ndash;2047): <code id="wc-index"></code></div>
+    <div class="meta warn">Write this word down now, on paper, away from any camera or networked device. It will be cleared from this page as soon as you continue.</div>
+    <button type="button" class="pick-another" id="btn-continue">I've written it down &mdash; clear and continue</button>
+  </div>
+
+  <!-- ==================== FINISHED SCREEN ==================== -->
+  <div class="panel hidden" id="screen-finished">
+    <div class="finished-title">Entropy words complete.</div>
+    <div class="finished-body" id="finished-body"></div>
+    <button type="button" class="btn-primary" id="btn-start-over">Start a new seed</button>
+  </div>
+</div>
+
+<script>
+/*
+ * This file deliberately contains no checksum logic, no 12th/24th-word
+ * generation, no full-mnemonic assembly, and no seed/key derivation.
+ * The only cryptographic operation implemented is the fixed, deterministic
+ * mapping from an 11-bit integer (0-2047) to a word in the BIP39 English
+ * list. See the "Security model & honesty notes" panel in the UI for the
+ * full rationale. Do not add checksum/final-word code to this file --
+ * that is an intentional security boundary, not a missing feature.
+ *
+ * No network requests, no localStorage/sessionStorage/cookies/IndexedDB,
+ * no service worker, no clipboard writes, no console logging of entropy
+ * or words.
+ */
+
+// ---------------------------------------------------------------------
+// BIP39 English word list (verbatim, 2048 entries). Do not edit by hand.
+// ---------------------------------------------------------------------
+const WORDS = ["abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse", "access", "accident", "account", "accuse", "achieve", "acid", "acoustic", "acquire", "across", "act", "action", "actor", "actress", "actual", "adapt", "add", "addict", "address", "adjust", "admit", "adult", "advance", "advice", "aerobic", "affair", "afford", "afraid", "again", "age", "agent", "agree", "ahead", "aim", "air", "airport", "aisle", "alarm", "album", "alcohol", "alert", "alien", "all", "alley", "allow", "almost", "alone", "alpha", "already", "also", "alter", "always", "amateur", "amazing", "among", "amount", "amused", "analyst", "anchor", "ancient", "anger", "angle", "angry", "animal", "ankle", "announce", "annual", "another", "answer", "antenna", "antique", "anxiety", "any", "apart", "apology", "appear", "apple", "approve", "april", "arch", "arctic", "area", "arena", "argue", "arm", "armed", "armor", "army", "around", "arrange", "arrest", "arrive", "arrow", "art", "artefact", "artist", "artwork", "ask", "aspect", "assault", "asset", "assist", "assume", "asthma", "athlete", "atom", "attack", "attend", "attitude", "attract", "auction", "audit", "august", "aunt", "author", "auto", "autumn", "average", "avocado", "avoid", "awake", "aware", "away", "awesome", "awful", "awkward", "axis", "baby", "bachelor", "bacon", "badge", "bag", "balance", "balcony", "ball", "bamboo", "banana", "banner", "bar", "barely", "bargain", "barrel", "base", "basic", "basket", "battle", "beach", "bean", "beauty", "because", "become", "beef", "before", "begin", "behave", "behind", "believe", "below", "belt", "bench", "benefit", "best", "betray", "better", "between", "beyond", "bicycle", "bid", "bike", "bind", "biology", "bird", "birth", "bitter", "black", "blade", "blame", "blanket", "blast", "bleak", "bless", "blind", "blood", "blossom", "blouse", "blue", "blur", "blush", "board", "boat", "body", "boil", "bomb", "bone", "bonus", "book", "boost", "border", "boring", "borrow", "boss", "bottom", "bounce", "box", "boy", "bracket", "brain", "brand", "brass", "brave", "bread", "breeze", "brick", "bridge", "brief", "bright", "bring", "brisk", "broccoli", "broken", "bronze", "broom", "brother", "brown", "brush", "bubble", "buddy", "budget", "buffalo", "build", "bulb", "bulk", "bullet", "bundle", "bunker", "burden", "burger", "burst", "bus", "business", "busy", "butter", "buyer", "buzz", "cabbage", "cabin", "cable", "cactus", "cage", "cake", "call", "calm", "camera", "camp", "can", "canal", "cancel", "candy", "cannon", "canoe", "canvas", "canyon", "capable", "capital", "captain", "car", "carbon", "card", "cargo", "carpet", "carry", "cart", "case", "cash", "casino", "castle", "casual", "cat", "catalog", "catch", "category", "cattle", "caught", "cause", "caution", "cave", "ceiling", "celery", "cement", "census", "century", "cereal", "certain", "chair", "chalk", "champion", "change", "chaos", "chapter", "charge", "chase", "chat", "cheap", "check", "cheese", "chef", "cherry", "chest", "chicken", "chief", "child", "chimney", "choice", "choose", "chronic", "chuckle", "chunk", "churn", "cigar", "cinnamon", "circle", "citizen", "city", "civil", "claim", "clap", "clarify", "claw", "clay", "clean", "clerk", "clever", "click", "client", "cliff", "climb", "clinic", "clip", "clock", "clog", "close", "cloth", "cloud", "clown", "club", "clump", "cluster", "clutch", "coach", "coast", "coconut", "code", "coffee", "coil", "coin", "collect", "color", "column", "combine", "come", "comfort", "comic", "common", "company", "concert", "conduct", "confirm", "congress", "connect", "consider", "control", "convince", "cook", "cool", "copper", "copy", "coral", "core", "corn", "correct", "cost", "cotton", "couch", "country", "couple", "course", "cousin", "cover", "coyote", "crack", "cradle", "craft", "cram", "crane", "crash", "crater", "crawl", "crazy", "cream", "credit", "creek", "crew", "cricket", "crime", "crisp", "critic", "crop", "cross", "crouch", "crowd", "crucial", "cruel", "cruise", "crumble", "crunch", "crush", "cry", "crystal", "cube", "culture", "cup", "cupboard", "curious", "current", "curtain", "curve", "cushion", "custom", "cute", "cycle", "dad", "damage", "damp", "dance", "danger", "daring", "dash", "daughter", "dawn", "day", "deal", "debate", "debris", "decade", "december", "decide", "decline", "decorate", "decrease", "deer", "defense", "define", "defy", "degree", "delay", "deliver", "demand", "demise", "denial", "dentist", "deny", "depart", "depend", "deposit", "depth", "deputy", "derive", "describe", "desert", "design", "desk", "despair", "destroy", "detail", "detect", "develop", "device", "devote", "diagram", "dial", "diamond", "diary", "dice", "diesel", "diet", "differ", "digital", "dignity", "dilemma", "dinner", "dinosaur", "direct", "dirt", "disagree", "discover", "disease", "dish", "dismiss", "disorder", "display", "distance", "divert", "divide", "divorce", "dizzy", "doctor", "document", "dog", "doll", "dolphin", "domain", "donate", "donkey", "donor", "door", "dose", "double", "dove", "draft", "dragon", "drama", "drastic", "draw", "dream", "dress", "drift", "drill", "drink", "drip", "drive", "drop", "drum", "dry", "duck", "dumb", "dune", "during", "dust", "dutch", "duty", "dwarf", "dynamic", "eager", "eagle", "early", "earn", "earth", "easily", "east", "easy", "echo", "ecology", "economy", "edge", "edit", "educate", "effort", "egg", "eight", "either", "elbow", "elder", "electric", "elegant", "element", "elephant", "elevator", "elite", "else", "embark", "embody", "embrace", "emerge", "emotion", "employ", "empower", "empty", "enable", "enact", "end", "endless", "endorse", "enemy", "energy", "enforce", "engage", "engine", "enhance", "enjoy", "enlist", "enough", "enrich", "enroll", "ensure", "enter", "entire", "entry", "envelope", "episode", "equal", "equip", "era", "erase", "erode", "erosion", "error", "erupt", "escape", "essay", "essence", "estate", "eternal", "ethics", "evidence", "evil", "evoke", "evolve", "exact", "example", "excess", "exchange", "excite", "exclude", "excuse", "execute", "exercise", "exhaust", "exhibit", "exile", "exist", "exit", "exotic", "expand", "expect", "expire", "explain", "expose", "express", "extend", "extra", "eye", "eyebrow", "fabric", "face", "faculty", "fade", "faint", "faith", "fall", "false", "fame", "family", "famous", "fan", "fancy", "fantasy", "farm", "fashion", "fat", "fatal", "father", "fatigue", "fault", "favorite", "feature", "february", "federal", "fee", "feed", "feel", "female", "fence", "festival", "fetch", "fever", "few", "fiber", "fiction", "field", "figure", "file", "film", "filter", "final", "find", "fine", "finger", "finish", "fire", "firm", "first", "fiscal", "fish", "fit", "fitness", "fix", "flag", "flame", "flash", "flat", "flavor", "flee", "flight", "flip", "float", "flock", "floor", "flower", "fluid", "flush", "fly", "foam", "focus", "fog", "foil", "fold", "follow", "food", "foot", "force", "forest", "forget", "fork", "fortune", "forum", "forward", "fossil", "foster", "found", "fox", "fragile", "frame", "frequent", "fresh", "friend", "fringe", "frog", "front", "frost", "frown", "frozen", "fruit", "fuel", "fun", "funny", "furnace", "fury", "future", "gadget", "gain", "galaxy", "gallery", "game", "gap", "garage", "garbage", "garden", "garlic", "garment", "gas", "gasp", "gate", "gather", "gauge", "gaze", "general", "genius", "genre", "gentle", "genuine", "gesture", "ghost", "giant", "gift", "giggle", "ginger", "giraffe", "girl", "give", "glad", "glance", "glare", "glass", "glide", "glimpse", "globe", "gloom", "glory", "glove", "glow", "glue", "goat", "goddess", "gold", "good", "goose", "gorilla", "gospel", "gossip", "govern", "gown", "grab", "grace", "grain", "grant", "grape", "grass", "gravity", "great", "green", "grid", "grief", "grit", "grocery", "group", "grow", "grunt", "guard", "guess", "guide", "guilt", "guitar", "gun", "gym", "habit", "hair", "half", "hammer", "hamster", "hand", "happy", "harbor", "hard", "harsh", "harvest", "hat", "have", "hawk", "hazard", "head", "health", "heart", "heavy", "hedgehog", "height", "hello", "helmet", "help", "hen", "hero", "hidden", "high", "hill", "hint", "hip", "hire", "history", "hobby", "hockey", "hold", "hole", "holiday", "hollow", "home", "honey", "hood", "hope", "horn", "horror", "horse", "hospital", "host", "hotel", "hour", "hover", "hub", "huge", "human", "humble", "humor", "hundred", "hungry", "hunt", "hurdle", "hurry", "hurt", "husband", "hybrid", "ice", "icon", "idea", "identify", "idle", "ignore", "ill", "illegal", "illness", "image", "imitate", "immense", "immune", "impact", "impose", "improve", "impulse", "inch", "include", "income", "increase", "index", "indicate", "indoor", "industry", "infant", "inflict", "inform", "inhale", "inherit", "initial", "inject", "injury", "inmate", "inner", "innocent", "input", "inquiry", "insane", "insect", "inside", "inspire", "install", "intact", "interest", "into", "invest", "invite", "involve", "iron", "island", "isolate", "issue", "item", "ivory", "jacket", "jaguar", "jar", "jazz", "jealous", "jeans", "jelly", "jewel", "job", "join", "joke", "journey", "joy", "judge", "juice", "jump", "jungle", "junior", "junk", "just", "kangaroo", "keen", "keep", "ketchup", "key", "kick", "kid", "kidney", "kind", "kingdom", "kiss", "kit", "kitchen", "kite", "kitten", "kiwi", "knee", "knife", "knock", "know", "lab", "label", "labor", "ladder", "lady", "lake", "lamp", "language", "laptop", "large", "later", "latin", "laugh", "laundry", "lava", "law", "lawn", "lawsuit", "layer", "lazy", "leader", "leaf", "learn", "leave", "lecture", "left", "leg", "legal", "legend", "leisure", "lemon", "lend", "length", "lens", "leopard", "lesson", "letter", "level", "liar", "liberty", "library", "license", "life", "lift", "light", "like", "limb", "limit", "link", "lion", "liquid", "list", "little", "live", "lizard", "load", "loan", "lobster", "local", "lock", "logic", "lonely", "long", "loop", "lottery", "loud", "lounge", "love", "loyal", "lucky", "luggage", "lumber", "lunar", "lunch", "luxury", "lyrics", "machine", "mad", "magic", "magnet", "maid", "mail", "main", "major", "make", "mammal", "man", "manage", "mandate", "mango", "mansion", "manual", "maple", "marble", "march", "margin", "marine", "market", "marriage", "mask", "mass", "master", "match", "material", "math", "matrix", "matter", "maximum", "maze", "meadow", "mean", "measure", "meat", "mechanic", "medal", "media", "melody", "melt", "member", "memory", "mention", "menu", "mercy", "merge", "merit", "merry", "mesh", "message", "metal", "method", "middle", "midnight", "milk", "million", "mimic", "mind", "minimum", "minor", "minute", "miracle", "mirror", "misery", "miss", "mistake", "mix", "mixed", "mixture", "mobile", "model", "modify", "mom", "moment", "monitor", "monkey", "monster", "month", "moon", "moral", "more", "morning", "mosquito", "mother", "motion", "motor", "mountain", "mouse", "move", "movie", "much", "muffin", "mule", "multiply", "muscle", "museum", "mushroom", "music", "must", "mutual", "myself", "mystery", "myth", "naive", "name", "napkin", "narrow", "nasty", "nation", "nature", "near", "neck", "need", "negative", "neglect", "neither", "nephew", "nerve", "nest", "net", "network", "neutral", "never", "news", "next", "nice", "night", "noble", "noise", "nominee", "noodle", "normal", "north", "nose", "notable", "note", "nothing", "notice", "novel", "now", "nuclear", "number", "nurse", "nut", "oak", "obey", "object", "oblige", "obscure", "observe", "obtain", "obvious", "occur", "ocean", "october", "odor", "off", "offer", "office", "often", "oil", "okay", "old", "olive", "olympic", "omit", "once", "one", "onion", "online", "only", "open", "opera", "opinion", "oppose", "option", "orange", "orbit", "orchard", "order", "ordinary", "organ", "orient", "original", "orphan", "ostrich", "other", "outdoor", "outer", "output", "outside", "oval", "oven", "over", "own", "owner", "oxygen", "oyster", "ozone", "pact", "paddle", "page", "pair", "palace", "palm", "panda", "panel", "panic", "panther", "paper", "parade", "parent", "park", "parrot", "party", "pass", "patch", "path", "patient", "patrol", "pattern", "pause", "pave", "payment", "peace", "peanut", "pear", "peasant", "pelican", "pen", "penalty", "pencil", "people", "pepper", "perfect", "permit", "person", "pet", "phone", "photo", "phrase", "physical", "piano", "picnic", "picture", "piece", "pig", "pigeon", "pill", "pilot", "pink", "pioneer", "pipe", "pistol", "pitch", "pizza", "place", "planet", "plastic", "plate", "play", "please", "pledge", "pluck", "plug", "plunge", "poem", "poet", "point", "polar", "pole", "police", "pond", "pony", "pool", "popular", "portion", "position", "possible", "post", "potato", "pottery", "poverty", "powder", "power", "practice", "praise", "predict", "prefer", "prepare", "present", "pretty", "prevent", "price", "pride", "primary", "print", "priority", "prison", "private", "prize", "problem", "process", "produce", "profit", "program", "project", "promote", "proof", "property", "prosper", "protect", "proud", "provide", "public", "pudding", "pull", "pulp", "pulse", "pumpkin", "punch", "pupil", "puppy", "purchase", "purity", "purpose", "purse", "push", "put", "puzzle", "pyramid", "quality", "quantum", "quarter", "question", "quick", "quit", "quiz", "quote", "rabbit", "raccoon", "race", "rack", "radar", "radio", "rail", "rain", "raise", "rally", "ramp", "ranch", "random", "range", "rapid", "rare", "rate", "rather", "raven", "raw", "razor", "ready", "real", "reason", "rebel", "rebuild", "recall", "receive", "recipe", "record", "recycle", "reduce", "reflect", "reform", "refuse", "region", "regret", "regular", "reject", "relax", "release", "relief", "rely", "remain", "remember", "remind", "remove", "render", "renew", "rent", "reopen", "repair", "repeat", "replace", "report", "require", "rescue", "resemble", "resist", "resource", "response", "result", "retire", "retreat", "return", "reunion", "reveal", "review", "reward", "rhythm", "rib", "ribbon", "rice", "rich", "ride", "ridge", "rifle", "right", "rigid", "ring", "riot", "ripple", "risk", "ritual", "rival", "river", "road", "roast", "robot", "robust", "rocket", "romance", "roof", "rookie", "room", "rose", "rotate", "rough", "round", "route", "royal", "rubber", "rude", "rug", "rule", "run", "runway", "rural", "sad", "saddle", "sadness", "safe", "sail", "salad", "salmon", "salon", "salt", "salute", "same", "sample", "sand", "satisfy", "satoshi", "sauce", "sausage", "save", "say", "scale", "scan", "scare", "scatter", "scene", "scheme", "school", "science", "scissors", "scorpion", "scout", "scrap", "screen", "script", "scrub", "sea", "search", "season", "seat", "second", "secret", "section", "security", "seed", "seek", "segment", "select", "sell", "seminar", "senior", "sense", "sentence", "series", "service", "session", "settle", "setup", "seven", "shadow", "shaft", "shallow", "share", "shed", "shell", "sheriff", "shield", "shift", "shine", "ship", "shiver", "shock", "shoe", "shoot", "shop", "short", "shoulder", "shove", "shrimp", "shrug", "shuffle", "shy", "sibling", "sick", "side", "siege", "sight", "sign", "silent", "silk", "silly", "silver", "similar", "simple", "since", "sing", "siren", "sister", "situate", "six", "size", "skate", "sketch", "ski", "skill", "skin", "skirt", "skull", "slab", "slam", "sleep", "slender", "slice", "slide", "slight", "slim", "slogan", "slot", "slow", "slush", "small", "smart", "smile", "smoke", "smooth", "snack", "snake", "snap", "sniff", "snow", "soap", "soccer", "social", "sock", "soda", "soft", "solar", "soldier", "solid", "solution", "solve", "someone", "song", "soon", "sorry", "sort", "soul", "sound", "soup", "source", "south", "space", "spare", "spatial", "spawn", "speak", "special", "speed", "spell", "spend", "sphere", "spice", "spider", "spike", "spin", "spirit", "split", "spoil", "sponsor", "spoon", "sport", "spot", "spray", "spread", "spring", "spy", "square", "squeeze", "squirrel", "stable", "stadium", "staff", "stage", "stairs", "stamp", "stand", "start", "state", "stay", "steak", "steel", "stem", "step", "stereo", "stick", "still", "sting", "stock", "stomach", "stone", "stool", "story", "stove", "strategy", "street", "strike", "strong", "struggle", "student", "stuff", "stumble", "style", "subject", "submit", "subway", "success", "such", "sudden", "suffer", "sugar", "suggest", "suit", "summer", "sun", "sunny", "sunset", "super", "supply", "supreme", "sure", "surface", "surge", "surprise", "surround", "survey", "suspect", "sustain", "swallow", "swamp", "swap", "swarm", "swear", "sweet", "swift", "swim", "swing", "switch", "sword", "symbol", "symptom", "syrup", "system", "table", "tackle", "tag", "tail", "talent", "talk", "tank", "tape", "target", "task", "taste", "tattoo", "taxi", "teach", "team", "tell", "ten", "tenant", "tennis", "tent", "term", "test", "text", "thank", "that", "theme", "then", "theory", "there", "they", "thing", "this", "thought", "three", "thrive", "throw", "thumb", "thunder", "ticket", "tide", "tiger", "tilt", "timber", "time", "tiny", "tip", "tired", "tissue", "title", "toast", "tobacco", "today", "toddler", "toe", "together", "toilet", "token", "tomato", "tomorrow", "tone", "tongue", "tonight", "tool", "tooth", "top", "topic", "topple", "torch", "tornado", "tortoise", "toss", "total", "tourist", "toward", "tower", "town", "toy", "track", "trade", "traffic", "tragic", "train", "transfer", "trap", "trash", "travel", "tray", "treat", "tree", "trend", "trial", "tribe", "trick", "trigger", "trim", "trip", "trophy", "trouble", "truck", "true", "truly", "trumpet", "trust", "truth", "try", "tube", "tuition", "tumble", "tuna", "tunnel", "turkey", "turn", "turtle", "twelve", "twenty", "twice", "twin", "twist", "two", "type", "typical", "ugly", "umbrella", "unable", "unaware", "uncle", "uncover", "under", "undo", "unfair", "unfold", "unhappy", "uniform", "unique", "unit", "universe", "unknown", "unlock", "until", "unusual", "unveil", "update", "upgrade", "uphold", "upon", "upper", "upset", "urban", "urge", "usage", "use", "used", "useful", "useless", "usual", "utility", "vacant", "vacuum", "vague", "valid", "valley", "valve", "van", "vanish", "vapor", "various", "vast", "vault", "vehicle", "velvet", "vendor", "venture", "venue", "verb", "verify", "version", "very", "vessel", "veteran", "viable", "vibrant", "vicious", "victory", "video", "view", "village", "vintage", "violin", "virtual", "virus", "visa", "visit", "visual", "vital", "vivid", "vocal", "voice", "void", "volcano", "volume", "vote", "voyage", "wage", "wagon", "wait", "walk", "wall", "walnut", "want", "warfare", "warm", "warrior", "wash", "wasp", "waste", "water", "wave", "way", "wealth", "weapon", "wear", "weasel", "weather", "web", "wedding", "weekend", "weird", "welcome", "west", "wet", "whale", "what", "wheat", "wheel", "when", "where", "whip", "whisper", "wide", "width", "wife", "wild", "will", "win", "window", "wine", "wing", "wink", "winner", "winter", "wire", "wisdom", "wise", "wish", "witness", "wolf", "woman", "wonder", "wood", "wool", "word", "work", "world", "worry", "worth", "wrap", "wreck", "wrestle", "wrist", "write", "wrong", "yard", "year", "yellow", "you", "young", "youth", "zebra", "zero", "zone", "zoo"];
+
+if (WORDS.length !== 2048) {
+  document.body.innerHTML = '<p style="color:red;padding:20px">Word list error: expected 2048 words, found ' + WORDS.length + '.</p>';
+  throw new Error('bad word list length');
+}
+
+// ---------------------------------------------------------------------
+// Pure, auditable core primitives. No DOM access, no I/O, no randomness.
+// ---------------------------------------------------------------------
+
+// 11 bits (each 0 or 1), MSB first (first flip = highest order bit) -> 0..2047
+function bitsArrayToIndex(bitsArr) {
+  if (!Array.isArray(bitsArr) || bitsArr.length !== 11) {
+    throw new Error('bitsArrayToIndex requires exactly 11 bits');
+  }
+  let idx = 0;
+  for (let i = 0; i < 11; i++) {
+    const b = bitsArr[i];
+    if (b !== 0 && b !== 1) throw new Error('bitsArrayToIndex: invalid bit value');
+    idx = (idx << 1) | b;
+  }
+  return idx;
+}
+
+function indexToWord(idx) {
+  if (!Number.isInteger(idx) || idx < 0 || idx > 2047) {
+    throw new Error('indexToWord: index out of range');
+  }
+  return WORDS[idx];
+}
+
+// Standard-mode collector: one physical flip = one bit.
+function createStandardCollector() {
+  return { bits: [] };
+}
+function standardAddFlip(collector, isHeads) {
+  if (collector.bits.length < 11) {
+    collector.bits.push(isHeads ? 1 : 0);
+  }
+  return collector;
+}
+function standardIsComplete(collector) {
+  return collector.bits.length === 11;
+}
+
+// Von Neumann extractor: HT -> 1, TH -> 0, HH/TT -> discard (null).
+function vnExtractBit(firstSymbol, secondSymbol) {
+  if (firstSymbol === 'H' && secondSymbol === 'T') return 1;
+  if (firstSymbol === 'T' && secondSymbol === 'H') return 0;
+  return null;
+}
+
+// Bias-resistant-mode collector: two physical flips = one extracted bit (or a discard).
+function createVNCollector() {
+  return { bits: [], pendingFirst: null, pairsObserved: 0, pairsDiscarded: 0 };
+}
+function vnAddFlip(collector, symbol) {
+  if (collector.bits.length >= 11) return collector;
+  if (collector.pendingFirst === null) {
+    collector.pendingFirst = symbol;
+    return collector;
+  }
+  const bit = vnExtractBit(collector.pendingFirst, symbol);
+  collector.pairsObserved++;
+  collector.pendingFirst = null;
+  if (bit === null) {
+    collector.pairsDiscarded++;
+  } else if (collector.bits.length < 11) {
+    collector.bits.push(bit);
+  }
+  return collector;
+}
+function vnIsComplete(collector) {
+  return collector.bits.length === 11;
+}
+
+// ---------------------------------------------------------------------
+// Self-tests: synthetic vectors only, never touch real flip state.
+// ---------------------------------------------------------------------
+function runSelfTests() {
+  const results = [];
+  function check(name, fn) {
+    try {
+      const ok = fn();
+      results.push({ name, pass: !!ok });
+    } catch (e) {
+      results.push({ name, pass: false, error: String(e && e.message || e) });
+    }
+  }
+
+  check('word list has exactly 2048 entries', () => WORDS.length === 2048);
+  check('word 0 is "abandon"', () => WORDS[0] === 'abandon');
+  check('word 2047 is "zoo"', () => WORDS[2047] === 'zoo');
+
+  check('11 zero bits map to index 0 / "abandon"', () => {
+    const bits = [0,0,0,0,0,0,0,0,0,0,0];
+    return bitsArrayToIndex(bits) === 0 && indexToWord(bitsArrayToIndex(bits)) === 'abandon';
+  });
+  check('11 one bits map to index 2047 / "zoo"', () => {
+    const bits = [1,1,1,1,1,1,1,1,1,1,1];
+    return bitsArrayToIndex(bits) === 2047 && indexToWord(bitsArrayToIndex(bits)) === 'zoo';
+  });
+  check('mapping is deterministic (same input -> same output, twice)', () => {
+    const bits = [1,0,1,1,0,0,1,0,1,0,1];
+    return bitsArrayToIndex(bits) === bitsArrayToIndex(bits.slice());
+  });
+  check('a mid-range bit pattern maps to the expected index', () => {
+    // 10011000010 (binary) = 1218 (decimal)
+    const bits = [1,0,0,1,1,0,0,0,0,1,0];
+    return bitsArrayToIndex(bits) === 1218 && indexToWord(1218) === WORDS[1218];
+  });
+
+  check('standard collector accumulates exactly 11 bits, ignores extra flips', () => {
+    let c = createStandardCollector();
+    for (let i = 0; i < 15; i++) standardAddFlip(c, i % 2 === 0);
+    return c.bits.length === 11 && standardIsComplete(c);
+  });
+
+  check('von Neumann: HT -> 1', () => vnExtractBit('H', 'T') === 1);
+  check('von Neumann: TH -> 0', () => vnExtractBit('T', 'H') === 0);
+  check('von Neumann: HH -> discard', () => vnExtractBit('H', 'H') === null);
+  check('von Neumann: TT -> discard', () => vnExtractBit('T', 'T') === null);
+
+  check('von Neumann collector stops at exactly 11 extracted bits', () => {
+    // Build a synthetic pair sequence with a discard before each valid
+    // pair, containing more than enough valid pairs to reach 11 bits.
+    const pairs = [];
+    for (let i = 0; i < 20; i++) {
+      pairs.push('HH');                          // discard filler
+      pairs.push(i % 2 === 0 ? 'HT' : 'TH');      // valid pair
+    }
+    let c = createVNCollector();
+    let completedDuringLoop = false;
+    for (const pair of pairs) {
+      vnAddFlip(c, pair[0]);
+      vnAddFlip(c, pair[1]);
+      if (vnIsComplete(c)) { completedDuringLoop = true; break; }
+    }
+    const lenAtComplete = c.bits.length;
+    // Feeding another full valid pair after completion must not grow bits further.
+    vnAddFlip(c, 'H');
+    vnAddFlip(c, 'T');
+    return completedDuringLoop && lenAtComplete === 11 && c.bits.length === 11;
+  });
+
+  check('fresh word state has no bits and no pending flip', () => {
+    const c = createVNCollector();
+    return c.bits.length === 0 && c.pendingFirst === null;
+  });
+  check('completing a word and starting a new one does not carry state over', () => {
+    let c = createStandardCollector();
+    for (let i = 0; i < 11; i++) standardAddFlip(c, true);
+    const finishedBits = c.bits;
+    c = createStandardCollector(); // simulates "clear and continue"
+    return finishedBits.length === 11 && c.bits.length === 0 && c.bits !== finishedBits;
+  });
+
+  return results;
+}
+
+// ---------------------------------------------------------------------
+// UI wiring. State below is intentionally minimal: only the in-progress
+// word's collector and a plain count of completed words are kept. No
+// array of completed words or bits ever exists.
+// ---------------------------------------------------------------------
+let seedLength = 12;          // 12 or 24
+let mode = 'standard';        // 'standard' | 'vn'
+let coinCount = 3;            // 1..9
+let targetEntropyWords = 11;  // derived from seedLength
+let wordsCompleted = 0;       // count only
+let collector = null;         // current word's in-progress collector
+let currentResult = null;     // { binary, index, word } for the word-complete screen only
+
+const screens = {
+  setup: document.getElementById('screen-setup'),
+  flip: document.getElementById('screen-flip'),
+  wordComplete: document.getElementById('screen-word-complete'),
+  finished: document.getElementById('screen-finished'),
+};
+function showScreen(name) {
+  for (const key in screens) {
+    screens[key].classList.toggle('hidden', key !== name);
+  }
+}
+
+// --- Setup screen wiring ---
+const optLen12 = document.getElementById('opt-len-12');
+const optLen24 = document.getElementById('opt-len-24');
+const optModeStandard = document.getElementById('opt-mode-standard');
+const optModeVN = document.getElementById('opt-mode-vn');
+const modeNote = document.getElementById('mode-note');
+const setupCoinValue = document.getElementById('setup-coin-value');
+
+const MODE_NOTES = {
+  standard: 'Each entropy bit comes directly from one coin flip. This page alternates which face you’re asked to start each flip on, and rotates through your coins, as techniques intended to reduce known physical coin-toss biases (such as the same-side bias measured in large real-coin studies). This does not make a physical coin perfectly unbiased or guarantee the resulting bits are mathematically independent and identically distributed.',
+  vn: 'Each entropy bit comes from two consecutive coin flips: Heads→Tails = 1, Tails→Heads = 0, and Heads→Heads / Tails→Tails are discarded and re-flipped. This removes first-order heads/tails bias under the usual assumption that consecutive flips are independent trials from a fixed (even if unfair) coin. It does not guarantee perfect randomness against arbitrary correlations between flips, and it does not make the coin "perfectly random."',
+};
+
+function setLen(len) {
+  seedLength = len;
+  optLen12.classList.toggle('active', len === 12);
+  optLen24.classList.toggle('active', len === 24);
+}
+function setMode(m) {
+  mode = m;
+  optModeStandard.classList.toggle('active', m === 'standard');
+  optModeVN.classList.toggle('active', m === 'vn');
+  modeNote.textContent = MODE_NOTES[m];
+}
+optLen12.addEventListener('click', () => setLen(12));
+optLen24.addEventListener('click', () => setLen(24));
+optModeStandard.addEventListener('click', () => setMode('standard'));
+optModeVN.addEventListener('click', () => setMode('vn'));
+
+function updateSetupCoinDisplay() {
+  setupCoinValue.textContent = coinCount + (coinCount === 1 ? ' coin' : ' coins');
+}
+document.getElementById('coin-dec').addEventListener('click', () => {
+  coinCount = Math.max(1, coinCount - 1);
+  updateSetupCoinDisplay();
+});
+document.getElementById('coin-inc').addEventListener('click', () => {
+  coinCount = Math.min(9, coinCount + 1);
+  updateSetupCoinDisplay();
+});
+
+document.getElementById('btn-run-tests').addEventListener('click', () => {
+  const results = runSelfTests();
+  const anyFail = results.some(r => !r.pass);
+  const lines = results.map(r => (r.pass ? 'PASS' : 'FAIL') + '  ' + r.name + (r.error ? '  (' + r.error + ')' : ''));
+  const out = document.getElementById('test-output');
+  out.textContent = lines.join('\n') + '\n\n' + (anyFail ? 'One or more self-tests FAILED.' : 'All self-tests passed.');
+  out.classList.toggle('fail', anyFail);
+  out.classList.toggle('pass', !anyFail);
+});
+
+document.getElementById('btn-begin').addEventListener('click', () => {
+  targetEntropyWords = seedLength === 12 ? 11 : 23;
+  wordsCompleted = 0;
+  collector = mode === 'standard' ? createStandardCollector() : createVNCollector();
+  renderFlipScreen();
+  showScreen('flip');
+});
+
+// --- Flip screen wiring ---
+const flipSeedLabel = document.getElementById('flip-seed-label');
+const flipWordProgress = document.getElementById('flip-word-progress');
+const flipStandardEl = document.getElementById('flip-standard');
+const flipVNEl = document.getElementById('flip-vn');
+
+function currentEntropyWordNumber() {
+  return wordsCompleted + 1; // 1-indexed word currently being generated
+}
+function currentCoinNumber() {
+  return ((currentEntropyWordNumber() - 1) % coinCount) + 1;
+}
+
+function renderFlipScreen() {
+  flipSeedLabel.textContent = seedLength + '-WORD SEED';
+  flipWordProgress.textContent = 'Entropy word ' + currentEntropyWordNumber() + ' of ' + targetEntropyWords;
+  flipStandardEl.classList.toggle('hidden', mode !== 'standard');
+  flipVNEl.classList.toggle('hidden', mode !== 'vn');
+  if (mode === 'standard') renderStandard(); else renderVN();
+}
+
+// -- Standard mode --
+const stdBitsDisplay = document.getElementById('std-bits-display');
+const stdFlipCount = document.getElementById('std-flip-count');
+const stdCoinValue = document.getElementById('std-coin-value');
+const stdStartSideValue = document.getElementById('std-start-side-value');
+
+function renderBitBoxes(container, bits) {
+  container.innerHTML = '';
+  for (let i = 0; i < 11; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'bit';
+    if (i < bits.length) {
+      cell.classList.add('filled');
+      cell.textContent = String(bits[i]);
+    } else if (i === bits.length) {
+      cell.classList.add('current');
+      cell.textContent = '?';
+    } else {
+      cell.textContent = '·';
+    }
+    container.appendChild(cell);
+  }
+}
+
+function renderStandard() {
+  renderBitBoxes(stdBitsDisplay, collector.bits);
+  stdFlipCount.textContent = 'Flip ' + (collector.bits.length + 1) + ' of 11';
+  stdCoinValue.textContent = 'Coin ' + currentCoinNumber() + ' of ' + coinCount;
+
+  // Deterministic (RNG-free) alternation: odd word numbers start heads-up,
+  // even word numbers start tails-up; within a word, alternate each flip.
+  const wordBaseHeads = (currentEntropyWordNumber() % 2 === 1);
+  const startHeadsUp = (collector.bits.length % 2 === 0) ? wordBaseHeads : !wordBaseHeads;
+  stdStartSideValue.textContent = startHeadsUp ? 'HEADS UP' : 'TAILS UP';
+}
+
+function handleStandardFlip(isHeads) {
+  standardAddFlip(collector, isHeads);
+  if (standardIsComplete(collector)) {
+    finalizeWord();
+  } else {
+    renderStandard();
+  }
+}
+document.getElementById('std-btn-heads').addEventListener('click', () => handleStandardFlip(true));
+document.getElementById('std-btn-tails').addEventListener('click', () => handleStandardFlip(false));
+document.getElementById('std-btn-undo').addEventListener('click', () => {
+  if (collector.bits.length > 0) collector.bits.pop();
+  renderStandard();
+});
+document.getElementById('std-btn-reset').addEventListener('click', () => {
+  collector = createStandardCollector();
+  renderStandard();
+});
+
+// -- Bias-resistant (von Neumann) mode --
+const vnBitsDisplay = document.getElementById('vn-bits-display');
+const vnStatus = document.getElementById('vn-status');
+const vnCoinValue = document.getElementById('vn-coin-value');
+const vnPairProgress = document.getElementById('vn-pair-progress');
+const vnMeta = document.getElementById('vn-meta');
+
+function renderVN() {
+  renderBitBoxes(vnBitsDisplay, collector.bits);
+  vnStatus.textContent = 'Extracted ' + collector.bits.length + ' of 11 bits';
+  vnCoinValue.textContent = 'Coin ' + currentCoinNumber() + ' of ' + coinCount;
+  if (collector.pendingFirst === null) {
+    vnPairProgress.textContent = 'Flip A of this pair';
+  } else {
+    vnPairProgress.textContent = 'Flip B of this pair (A was ' + (collector.pendingFirst === 'H' ? 'Heads' : 'Tails') + ')';
+  }
+  vnMeta.textContent = 'Pairs observed: ' + collector.pairsObserved + ' · discarded (same-same): ' + collector.pairsDiscarded;
+}
+
+function handleVNFlip(symbol) {
+  vnAddFlip(collector, symbol);
+  if (vnIsComplete(collector)) {
+    finalizeWord();
+  } else {
+    renderVN();
+  }
+}
+document.getElementById('vn-btn-heads').addEventListener('click', () => handleVNFlip('H'));
+document.getElementById('vn-btn-tails').addEventListener('click', () => handleVNFlip('T'));
+document.getElementById('vn-btn-undo').addEventListener('click', () => {
+  if (collector.pendingFirst !== null) {
+    collector.pendingFirst = null;
+  } else if (collector.bits.length > 0) {
+    collector.bits.pop();
+  }
+  renderVN();
+});
+document.getElementById('vn-btn-reset').addEventListener('click', () => {
+  collector = createVNCollector();
+  renderVN();
+});
+
+// --- Word-complete screen ---
+const wcBinary = document.getElementById('wc-binary');
+const wcWord = document.getElementById('wc-word');
+const wcIndex = document.getElementById('wc-index');
+
+function finalizeWord() {
+  const bits = collector.bits;
+  const index = bitsArrayToIndex(bits);
+  const word = indexToWord(index);
+  currentResult = { binary: bits.join(''), index, word };
+  collector = null; // this word's raw bits are gone the instant we have the word
+  wcBinary.textContent = currentResult.binary;
+  wcWord.textContent = currentResult.word;
+  wcIndex.textContent = String(currentResult.index);
+  showScreen('wordComplete');
+}
+
+document.getElementById('btn-continue').addEventListener('click', () => {
+  // Explicitly clear this word's result from state and DOM before moving on.
+  currentResult = null;
+  wcBinary.textContent = '';
+  wcWord.textContent = '';
+  wcIndex.textContent = '';
+
+  wordsCompleted++;
+  if (wordsCompleted >= targetEntropyWords) {
+    showFinished();
+  } else {
+    collector = mode === 'standard' ? createStandardCollector() : createVNCollector();
+    renderFlipScreen();
+    showScreen('flip');
+  }
+});
+
+// --- Finished screen ---
+const finishedBody = document.getElementById('finished-body');
+function showFinished() {
+  const finalWordNumber = seedLength; // 12th or 24th
+  finishedBody.textContent =
+    'You have generated ' + targetEntropyWords + ' of ' + targetEntropyWords + ' entropy words.\n\n' +
+    'The ' + finalWordNumber + (finalWordNumber === 12 ? 'th' : 'th') + ' BIP39 checksum word is intentionally NOT generated by this application.\n\n' +
+    'Generate the final word separately using your trusted hardware device, or another explicitly trusted offline method (for example, the iancoleman BIP39 tool, run from its downloaded standalone build on an air-gapped machine).\n\n' +
+    'Then close this page.';
+  showScreen('finished');
+}
+document.getElementById('btn-start-over').addEventListener('click', () => {
+  wordsCompleted = 0;
+  collector = null;
+  currentResult = null;
+  showScreen('setup');
+});
+
+// --- Initial paint ---
+setLen(12);
+setMode('standard');
+updateSetupCoinDisplay();
+showScreen('setup');
+</script>
+</body>
+</html>
